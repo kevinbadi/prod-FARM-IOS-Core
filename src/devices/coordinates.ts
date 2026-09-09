@@ -36,6 +36,18 @@ export interface SocialAppCoordinates {
     followingTab: Point;
     /** Instagram bottom-nav Reels tab (4th of 5). Unused on TikTok. */
     reelsTab: Point;
+    /** Instagram bottom-nav Search tab (2nd of 5). Unused on TikTok. */
+    searchTab: Point;
+    /** Instagram Explore search field. Unused on TikTok. */
+    searchField: Point;
+    /** First Accounts row after typing a handle. Unused on TikTok. */
+    searchFirstResult: Point;
+    /** Profile "Message" button. Unused on TikTok. */
+    profileMessage: Point;
+    /** DM thread composer field. Unused on TikTok. */
+    dmComposer: Point;
+    /** Leave DM thread without sending. Unused on TikTok. */
+    dmBack: Point;
     /** Open comments on the current video. */
     comment: Point;
     /** Comment sheet text field. */
@@ -100,6 +112,13 @@ const IPHONE8_TIKTOK: SocialAppCoordinates = {
     save: { x: 345, y: 444 },
     followingTab: { x: 95, y: 78 },
     reelsTab: { x: 262, y: 653 },
+    // Unused on TikTok — placeholders keep SocialAppCoordinates shared.
+    searchTab: { x: 112, y: 653 },
+    searchField: { x: 187, y: 90 },
+    searchFirstResult: { x: 100, y: 220 },
+    profileMessage: { x: 280, y: 420 },
+    dmComposer: { x: 180, y: 620 },
+    dmBack: { x: 22, y: 42 },
     comment: { x: 345, y: 378 },
     commentComposer: { x: 140, y: 620 },
     commentSend: { x: 340, y: 620 },
@@ -142,6 +161,12 @@ const IPHONE8_INSTAGRAM: SocialAppCoordinates = {
     followingTab: { x: 95, y: 78 },
     // Bottom nav: Home · Search · Create · Reels · Profile
     reelsTab: { x: 262, y: 650 },
+    searchTab: { x: 112, y: 650 },
+    searchField: { x: 187, y: 90 },
+    searchFirstResult: { x: 100, y: 220 },
+    profileMessage: { x: 280, y: 420 },
+    dmComposer: { x: 180, y: 620 },
+    dmBack: { x: 22, y: 42 },
     comment: { x: 345, y: 430 },
     commentComposer: { x: 140, y: 600 },
     commentSend: { x: 340, y: 600 },
@@ -180,6 +205,12 @@ function scaleSocial(base: SocialAppCoordinates, sx: number, sy: number): Social
         save: p(base.save),
         followingTab: p(base.followingTab),
         reelsTab: p(base.reelsTab),
+        searchTab: p(base.searchTab),
+        searchField: p(base.searchField),
+        searchFirstResult: p(base.searchFirstResult),
+        profileMessage: p(base.profileMessage),
+        dmComposer: p(base.dmComposer),
+        dmBack: p(base.dmBack),
         comment: p(base.comment),
         commentComposer: p(base.commentComposer),
         commentSend: p(base.commentSend),
@@ -248,6 +279,13 @@ export const DEVICE_COORDINATES = {
             save: { x: 372, y: 640 },
             commentComposer: { x: 150, y: 786 },
             commentSend: { x: 364, y: 786 },
+            // Cold DMs search → profile → Message → composer (recalibrate).
+            searchTab: { x: 120, y: 852 },
+            searchField: { x: 200, y: 100 },
+            searchFirstResult: { x: 100, y: 280 },
+            profileMessage: { x: 300, y: 520 },
+            dmComposer: { x: 180, y: 800 },
+            dmBack: { x: 24, y: 55 },
             swipe: { x: 130, startY: 721, endY: 197, durationMs: 380 },
         },
     },
@@ -296,7 +334,8 @@ export function coordinatesForProfile(profile: string = DEFAULT_COORDINATE_PROFI
 export const CALIBRATABLE_POINTS = [
     'profileTab', 'homeTab', 'accountSwitcher', 'create', 'postContent', 'upload', 'selectMultiple', 'useLayout',
     'pickerNext', 'editorNext', 'caption', 'keyboardBack', 'draft', 'finish', 'like', 'save',
-    'followingTab', 'reelsTab', 'comment', 'commentComposer', 'commentSend',
+    'followingTab', 'reelsTab', 'searchTab', 'searchField', 'searchFirstResult', 'profileMessage',
+    'dmComposer', 'dmBack', 'comment', 'commentComposer', 'commentSend',
 ] as const;
 
 export type CalibratablePoint = typeof CALIBRATABLE_POINTS[number];
@@ -307,7 +346,11 @@ export const TIKTOK_POINT_LABELS: Record<CalibratablePoint, string> = {
     pickerNext: 'TikTok: Media picker · Next', editorNext: 'TikTok: Editor · Next', caption: 'TikTok: Caption field',
     keyboardBack: 'TikTok: Keyboard · back', draft: 'TikTok: Save draft', finish: 'TikTok: Post / Finish',
     like: 'TikTok: Like button', save: 'TikTok: Save/bookmark button',
-    followingTab: 'TikTok: Following tab', reelsTab: 'TikTok: Reels tab', comment: 'TikTok: Comment button',
+    followingTab: 'TikTok: Following tab', reelsTab: 'TikTok: Reels tab',
+    searchTab: 'TikTok: Search tab (unused)', searchField: 'TikTok: Search field (unused)',
+    searchFirstResult: 'TikTok: Search result (unused)', profileMessage: 'TikTok: Message (unused)',
+    dmComposer: 'TikTok: DM composer (unused)', dmBack: 'TikTok: DM back (unused)',
+    comment: 'TikTok: Comment button',
     commentComposer: 'TikTok: Comment text field', commentSend: 'TikTok: Comment send',
 };
 
@@ -318,7 +361,11 @@ export const INSTAGRAM_POINT_LABELS: Record<CalibratablePoint, string> = {
     pickerNext: 'Instagram: Media picker · Next', editorNext: 'Instagram: Timeline editor · Next', caption: 'Instagram: Caption field',
     keyboardBack: 'Instagram: Keyboard · back', draft: 'Instagram: Save draft', finish: 'Instagram: Share / Finish',
     like: 'Instagram: Like button', save: 'Instagram: Save/bookmark button',
-    followingTab: 'Instagram: Following tab', reelsTab: 'Instagram: Reels tab', comment: 'Instagram: Comment button',
+    followingTab: 'Instagram: Following tab', reelsTab: 'Instagram: Reels tab',
+    searchTab: 'Instagram: Search tab', searchField: 'Instagram: Search field',
+    searchFirstResult: 'Instagram: Search · first account', profileMessage: 'Instagram: Profile · Message',
+    dmComposer: 'Instagram: DM composer', dmBack: 'Instagram: DM · Back',
+    comment: 'Instagram: Comment button',
     commentComposer: 'Instagram: Comment text field', commentSend: 'Instagram: Comment send',
 };
 

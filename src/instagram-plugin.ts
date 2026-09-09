@@ -7,10 +7,16 @@ import { pipeline } from 'node:stream/promises';
 
 import type { PhoneFarmPlugin, TaskDefinition, TaskExecutionContext } from './plugin.js';
 import type { JsonObject, JsonValue, ScheduleTiming } from './types.js';
+import {
+    parseColdDmHandles,
+    validateColdDmHandles,
+    validateColdDmMessage,
+} from './instagram/cold-dms-payload.js';
 
 export interface InstagramPluginConfiguration {
     doomscrollEntrypoint?: string;
     doomscrollFollowingEntrypoint?: string;
+    coldDmsEntrypoint?: string;
     postEntrypoint?: string;
     bundleId?: string;
 }
@@ -37,6 +43,12 @@ type PostPayload = JsonObject & {
     caption?: string;
     musicUrl?: string;
     recurringPublishConfirmed?: boolean;
+};
+
+type ColdDmsPayload = JsonObject & {
+    handles: string[];
+    message: string;
+    account?: string;
 };
 
 function objectPayload(value: JsonValue): Record<string, JsonValue> {
@@ -129,6 +141,55 @@ function createDoomscrollFollowingTask(configuration: InstagramPluginConfigurati
     };
 }
 
+function createColdDmsTask(configuration: InstagramPluginConfiguration): TaskDefinition<ColdDmsPayload> {
+    return {
+        type: 'cold-dms', version: 1, displayName: 'Instagram cold DMs',
+        validate(value) {
+            const input = objectPayload(value);
+            const handlesRaw = input.handles;
+            let handles: string[];
+            if (typeof handlesRaw === 'string') {
+                handles = validateColdDmHandles(parseColdDmHandles(handlesRaw));
+            } else if (Array.isArray(handlesRaw)) {
+                handles = validateColdDmHandles(
+                    handlesRaw.map((item) => {
+                        if (typeof item !== 'string') throw new Error('handles must be strings');
+                        return item.startsWith('@') ? item.trim() : `@${item.trim()}`;
+                    }).filter(Boolean),
+                );
+            } else {
+                throw new Error('handles must be a string list or array');
+            }
+            if (typeof input.message !== 'string') throw new Error('message must be a string');
+            const message = validateColdDmMessage(input.message);
+            const account = optionalString(input.account, 'account')?.trim();
+            if (account && !/^@[A-Za-z0-9._]{1,64}$/.test(account)) {
+                throw new Error('Instagram handles may contain letters, numbers, periods, and underscores');
+            }
+            return {
+                handles,
+                message,
+                ...(account ? { account } : {}),
+            };
+        },
+        summarize: (payload) => `Cold DMs · ${payload.handles.length} handles (dry-run)`,
+        estimateDurationMs: (payload) => Math.max(60_000, payload.handles.length * 45_000),
+        retryPolicy: () => ({ retryLimit: 0, retryDelaySeconds: 0, retryBackoff: false }),
+        supportsStop: () => true,
+        execute: (context, payload) => context.runProcess({
+            entrypoint: configuration.coldDmsEntrypoint
+                ?? fileURLToPath(new URL('./instagram/cold-dms.ts', import.meta.url)),
+            env: {
+                IOS_UDID: context.device.udid,
+                INSTAGRAM_BUNDLE_ID: configuration.bundleId ?? 'com.burbn.instagram',
+                COLD_DMS_HANDLES: payload.handles.join('\n'),
+                COLD_DMS_MESSAGE: payload.message,
+                ...(payload.account ? { INSTAGRAM_SWITCH_ACCOUNT: payload.account } : {}),
+            },
+        }),
+    };
+}
+
 function createPostTask(configuration: InstagramPluginConfiguration): TaskDefinition<PostPayload> {
     return {
         type: 'post', version: 1, displayName: 'Instagram post',
@@ -203,7 +264,12 @@ export function createInstagramPlugin(configuration: InstagramPluginConfiguratio
         id: 'com.git-agni.instagram',
         version: '0.1.0',
         displayName: 'Instagram automation',
-        tasks: [createDoomscrollTask(configuration), createDoomscrollFollowingTask(configuration), createPostTask(configuration)],
+        tasks: [
+            createDoomscrollTask(configuration),
+            createDoomscrollFollowingTask(configuration),
+            createColdDmsTask(configuration),
+            createPostTask(configuration),
+        ],
         devicePanels: [{
             id: 'instagram-controls', title: 'Instagram',
             fragmentPath: fileURLToPath(new URL('../static/instagram/device-panel.html', import.meta.url)), order: 100,
@@ -316,6 +382,47 @@ export function createInstagramPlugin(configuration: InstagramPluginConfiguratio
                             },
                             timing,
                             runWindowMinutes: body.runWindowMinutes ? Number(body.runWindowMinutes) : undefined,
+                        }, device.pluginData['com.git-agni.instagram'] ?? {});
+                        return reply.code(202).type('text/html').send(await context.renderActivity(device.udid));
+                    } catch (error) {
+                        const message = error instanceof Error ? error.message : String(error);
+                        return reply.code(409).type('text/html').send(await context.renderActivity(device.udid, message));
+                    }
+                },
+            );
+
+            context.app.post<{ Params: { udid: string }; Body: Record<string, string> }>(
+                '/api/devices/:udid/instagram/fragments/cold-dms-run', async (request, reply) => {
+                    const device = await deviceData(request.params.udid);
+                    if (!device) return reply.code(404).send({ error: 'Device is not registered' });
+                    if (device.disabled) return reply.code(409).send({ error: 'This device is disconnected — reconnect it before scheduling automation' });
+                    const body = request.body;
+                    try {
+                        const handles = validateColdDmHandles(parseColdDmHandles(body.handles ?? ''));
+                        const message = validateColdDmMessage(body.message ?? '');
+                        const recent = await context.scheduler.listExecutions(50, device.udid);
+                        const mine = recent.filter(({ pluginId, taskType }) => (
+                            pluginId === 'com.git-agni.instagram' && taskType === 'cold-dms'
+                        ));
+                        if (mine.some(({ status }) => status === 'running')) {
+                            throw new Error('A cold DMs run is already active on this device. Stop it from Activity, then start again.');
+                        }
+                        await context.scheduler.clearDeviceQueue(device.udid, {
+                            pluginId: 'com.git-agni.instagram',
+                            taskType: 'cold-dms',
+                            onlyQueued: true,
+                        });
+                        await context.scheduler.createTask({
+                            deviceUdid: device.udid,
+                            task: {
+                                pluginId: 'com.git-agni.instagram', taskType: 'cold-dms', taskVersion: 1,
+                                payload: {
+                                    handles,
+                                    message,
+                                    ...(body.account?.trim() ? { account: body.account.trim() } : {}),
+                                },
+                            },
+                            timing: { kind: 'now' },
                         }, device.pluginData['com.git-agni.instagram'] ?? {});
                         return reply.code(202).type('text/html').send(await context.renderActivity(device.udid));
                     } catch (error) {

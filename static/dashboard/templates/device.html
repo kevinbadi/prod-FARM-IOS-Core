@@ -113,6 +113,10 @@
                                 <span class="workflow-tile-title">Engage following</span>
                                 <span class="workflow-tile-desc">Reels Friends · soft recovery</span>
                             </button>
+                            <button id="open-instagram-cold-dms" class="workflow-tile" type="button">
+                                <span class="workflow-tile-title">Cold DMs</span>
+                                <span class="workflow-tile-desc">Handle list · open composer (no send)</span>
+                            </button>
                         </div>
                     </div>
 
@@ -512,6 +516,31 @@
                 <span class="spacer"></span>
                 <button id="cancel-instagram-following-doomscroll" class="button secondary" type="button">Cancel</button>
                 <button class="button primary" type="submit">Start engage following</button>
+            </div>
+        </form>
+    </dialog>
+    <dialog id="instagram-cold-dms-dialog">
+        <form id="instagram-cold-dms-form" class="modal" hx-post="/api/devices/__DEVICE_UDID__/instagram/fragments/cold-dms-run"
+            hx-target="#device-activity" hx-swap="outerHTML" hx-disabled-elt="button[type=submit]">
+            <div class="modal-head">
+                <div><span class="eyebrow">Instagram</span><h2>Cold DMs</h2></div>
+                <button id="close-instagram-cold-dms" class="icon-button" type="button">Close</button>
+            </div>
+            <p>Opens Search → profile → Message → types your preset. <strong>Does not tap Send</strong> — dry-run for calibration.</p>
+            <label for="instagram-cold-dms-handles">Handles <small>(one per line or comma-separated, max 25)</small></label>
+            <textarea id="instagram-cold-dms-handles" name="handles" rows="6" required placeholder="@creator1&#10;@creator2"></textarea>
+            <label for="instagram-cold-dms-message">Message preset</label>
+            <textarea id="instagram-cold-dms-message" name="message" rows="4" maxlength="1000" required placeholder="Hey — love your content…"></textarea>
+            <label for="instagram-cold-dms-account">Instagram account</label>
+            <select id="instagram-cold-dms-account" name="account">
+                <option value="">Don't switch</option>__INSTAGRAM_ACCOUNT_OPTIONS__
+            </select>
+            <p class="hint">Calibrate Search tab, search field, first result, Profile Message, DM composer, and DM Back under Instagram coordinates first.</p>
+            <div class="form-actions">
+                <span id="instagram-cold-dms-result" class="run-meta" aria-live="polite"></span>
+                <span class="spacer"></span>
+                <button id="cancel-instagram-cold-dms" class="button secondary" type="button">Cancel</button>
+                <button class="button primary" type="submit">Start dry-run</button>
             </div>
         </form>
     </dialog>

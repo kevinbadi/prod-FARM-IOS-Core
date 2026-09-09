@@ -89,6 +89,13 @@ const elements = {
     instagramFollowingCommentEnabled: element('#instagram-following-comment-enabled'),
     instagramFollowingCommentText: element('#instagram-following-comment-text'),
     instagramFollowingDoomscrollResult: element('#instagram-following-doomscroll-result'),
+    openInstagramColdDms: element('#open-instagram-cold-dms'),
+    instagramColdDmsDialog: element('#instagram-cold-dms-dialog'),
+    closeInstagramColdDms: element('#close-instagram-cold-dms'),
+    cancelInstagramColdDms: element('#cancel-instagram-cold-dms'),
+    instagramColdDmsForm: element('#instagram-cold-dms-form'),
+    instagramColdDmsAccount: element('#instagram-cold-dms-account'),
+    instagramColdDmsResult: element('#instagram-cold-dms-result'),
     instagramDoomscrollForm: element('#instagram-doomscroll-form'),
     instagramCommentEnabled: element('#instagram-comment-enabled'),
     instagramCommentText: element('#instagram-comment-text'),
@@ -917,18 +924,23 @@ elements.instagramAccountsForm.addEventListener('submit', async (event) => {
         });
         const previousDoomscroll = (document.querySelector('#instagram-doomscroll-account'))?.value ?? '';
         const previousFriends = (document.querySelector('#instagram-following-doomscroll-account'))?.value ?? '';
+        const previousColdDms = elements.instagramColdDmsAccount.value;
         const doomscrollAccount = element('#instagram-doomscroll-account');
         const friendsAccount = element('#instagram-following-doomscroll-account');
         doomscrollAccount.replaceChildren(new Option("Don't switch", ''));
         friendsAccount.replaceChildren(new Option("Don't switch", ''));
+        elements.instagramColdDmsAccount.replaceChildren(new Option("Don't switch", ''));
         for (const account of result.accounts) {
             doomscrollAccount.add(new Option(account, account));
             friendsAccount.add(new Option(account, account));
+            elements.instagramColdDmsAccount.add(new Option(account, account));
         }
         if (result.accounts.includes(previousDoomscroll))
             doomscrollAccount.value = previousDoomscroll;
         if (result.accounts.includes(previousFriends))
             friendsAccount.value = previousFriends;
+        if (result.accounts.includes(previousColdDms))
+            elements.instagramColdDmsAccount.value = previousColdDms;
         elements.instagramDeviceAccounts.value = result.accounts.join(', ');
         elements.instagramAccountsResult.textContent = result.accounts.length ? 'Accounts saved.' : 'Account switching is optional.';
     }
@@ -1485,6 +1497,25 @@ elements.instagramFollowingDoomscrollForm.addEventListener('htmx:afterRequest', 
     }
     else {
         elements.instagramFollowingDoomscrollResult.textContent = detail.xhr?.responseText
+            ? 'Could not start — check Activity.'
+            : 'Request failed.';
+    }
+}));
+elements.openInstagramColdDms.addEventListener('click', () => {
+    elements.instagramColdDmsResult.textContent = '';
+    elements.instagramColdDmsDialog.showModal();
+});
+elements.closeInstagramColdDms.addEventListener('click', () => elements.instagramColdDmsDialog.close());
+elements.cancelInstagramColdDms.addEventListener('click', () => elements.instagramColdDmsDialog.close());
+elements.instagramColdDmsForm.addEventListener('htmx:afterRequest', ((event) => {
+    const detail = event.detail;
+    if (detail.successful) {
+        elements.instagramColdDmsResult.textContent = 'Started.';
+        elements.instagramColdDmsDialog.close();
+        void loadDeviceTasks();
+    }
+    else {
+        elements.instagramColdDmsResult.textContent = detail.xhr?.responseText
             ? 'Could not start — check Activity.'
             : 'Request failed.';
     }

@@ -6,7 +6,9 @@ export interface InstagramCoordinates {
         selectMultiple: Point; useLayout: Point;
         picker: { circleX: number; columnStep: number; firstY: number; trayY: number; rowStep: number; cellX: number; cellStep: number; cellY: number };
         pickerNext: Point; editorNext: Point; caption: Point; keyboardBack: Point; draft: Point; finish: Point;
-        like: Point; save: Point; followingTab: Point; reelsTab: Point; comment: Point; commentComposer: Point; commentSend: Point;
+        like: Point; save: Point; followingTab: Point; reelsTab: Point;
+        searchTab: Point; searchField: Point; searchFirstResult: Point; profileMessage: Point; dmComposer: Point; dmBack: Point;
+        comment: Point; commentComposer: Point; commentSend: Point;
         swipe: { x: number; startY: number; endY: number; durationMs: number };
     };
 }
@@ -22,7 +24,10 @@ export const DEVICE_COORDINATES = {
             pickerNext: { x: 340, y: 70 }, editorNext: { x: 340, y: 70 }, caption: { x: 100, y: 200 },
             keyboardBack: { x: 22, y: 42 }, draft: { x: 80, y: 70 }, finish: { x: 340, y: 70 },
             like: { x: 345, y: 360 }, save: { x: 345, y: 500 },
-            followingTab: { x: 95, y: 78 }, reelsTab: { x: 262, y: 650 }, comment: { x: 345, y: 430 },
+            followingTab: { x: 95, y: 78 }, reelsTab: { x: 262, y: 650 },
+            searchTab: { x: 112, y: 650 }, searchField: { x: 187, y: 90 }, searchFirstResult: { x: 100, y: 220 },
+            profileMessage: { x: 280, y: 420 }, dmComposer: { x: 180, y: 620 }, dmBack: { x: 22, y: 42 },
+            comment: { x: 345, y: 430 },
             commentComposer: { x: 140, y: 600 }, commentSend: { x: 340, y: 600 },
             swipe: { x: 187, startY: 550, endY: 180, durationMs: 450 },
         },
@@ -38,7 +43,10 @@ export const DEVICE_COORDINATES = {
             pickerNext: { x: 364, y: 92 }, editorNext: { x: 348, y: 825 }, caption: { x: 107, y: 262 },
             keyboardBack: { x: 24, y: 55 }, draft: { x: 86, y: 92 }, finish: { x: 364, y: 92 },
             like: { x: 372, y: 470 }, save: { x: 372, y: 640 },
-            followingTab: { x: 72, y: 96 }, reelsTab: { x: 281, y: 852 }, comment: { x: 372, y: 555 },
+            followingTab: { x: 72, y: 96 }, reelsTab: { x: 281, y: 852 },
+            searchTab: { x: 120, y: 852 }, searchField: { x: 200, y: 100 }, searchFirstResult: { x: 100, y: 280 },
+            profileMessage: { x: 300, y: 520 }, dmComposer: { x: 180, y: 800 }, dmBack: { x: 24, y: 55 },
+            comment: { x: 372, y: 555 },
             commentComposer: { x: 150, y: 786 }, commentSend: { x: 364, y: 786 },
             swipe: { x: 130, startY: 721, endY: 197, durationMs: 380 },
         },
