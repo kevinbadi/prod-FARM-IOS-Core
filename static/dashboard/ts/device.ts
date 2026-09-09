@@ -142,27 +142,25 @@ const elements = {
     trainSaveResult: element<HTMLElement>('#train-save-result'),
     refreshWorkflows: element<HTMLButtonElement>('#refresh-workflows'),
     workflowList: element<HTMLElement>('#workflow-list'),
-    openInstagramPost: element<HTMLButtonElement>('#open-instagram-post'),
     openInstagramDoomscroll: element<HTMLButtonElement>('#open-instagram-doomscroll'),
     instagramDoomscrollDialog: element<HTMLDialogElement>('#instagram-doomscroll-dialog'),
     closeInstagramDoomscroll: element<HTMLButtonElement>('#close-instagram-doomscroll'),
     cancelInstagramDoomscroll: element<HTMLButtonElement>('#cancel-instagram-doomscroll'),
     instagramDoomscrollDuration: element<HTMLInputElement>('#instagram-doomscroll-duration'),
     instagramDoomscrollDurationButtons: Array.from(document.querySelectorAll<HTMLButtonElement>('[data-instagram-doomscroll-duration]')),
-    instagramPostDialog: element<HTMLDialogElement>('#instagram-post-dialog'),
-    instagramPostForm: element<HTMLFormElement>('#instagram-post-form'),
-    closeInstagramPost: element<HTMLButtonElement>('#close-instagram-post'),
-    cancelInstagramPost: element<HTMLButtonElement>('#cancel-instagram-post'),
-    submitInstagramPost: element<HTMLButtonElement>('#submit-instagram-post'),
-    instagramMedia: element<HTMLInputElement>('#instagram-media'),
-    instagramMediaList: element<HTMLOListElement>('#instagram-media-list'),
-    instagramMusicUrl: element<HTMLInputElement>('#instagram-music-url'),
-    instagramCaption: element<HTMLTextAreaElement>('#instagram-caption'),
-    instagramPostAccount: element<HTMLSelectElement>('#instagram-post-account'),
-    instagramPublishConfirm: element<HTMLElement>('#instagram-publish-confirm'),
-    instagramConfirmPublish: element<HTMLInputElement>('#instagram-confirm-publish'),
-    instagramPostResult: element<HTMLElement>('#instagram-post-result'),
+    openInstagramFollowingDoomscroll: element<HTMLButtonElement>('#open-instagram-following-doomscroll'),
+    instagramFollowingDoomscrollDialog: element<HTMLDialogElement>('#instagram-following-doomscroll-dialog'),
+    closeInstagramFollowingDoomscroll: element<HTMLButtonElement>('#close-instagram-following-doomscroll'),
+    cancelInstagramFollowingDoomscroll: element<HTMLButtonElement>('#cancel-instagram-following-doomscroll'),
+    instagramFollowingDoomscrollForm: element<HTMLFormElement>('#instagram-following-doomscroll-form'),
+    instagramFollowingDoomscrollDuration: element<HTMLInputElement>('#instagram-following-doomscroll-duration'),
+    instagramFollowingDoomscrollDurationButtons: Array.from(document.querySelectorAll<HTMLButtonElement>('[data-instagram-following-doomscroll-duration]')),
+    instagramFollowingCommentEnabled: element<HTMLInputElement>('#instagram-following-comment-enabled'),
+    instagramFollowingCommentText: element<HTMLInputElement>('#instagram-following-comment-text'),
+    instagramFollowingDoomscrollResult: element<HTMLElement>('#instagram-following-doomscroll-result'),
     instagramDoomscrollForm: element<HTMLFormElement>('#instagram-doomscroll-form'),
+    instagramCommentEnabled: element<HTMLInputElement>('#instagram-comment-enabled'),
+    instagramCommentText: element<HTMLInputElement>('#instagram-comment-text'),
     instagramDoomscrollRecurring: element<HTMLInputElement>('#instagram-doomscroll-recurring'),
     instagramDoomscrollStartOptions: element<HTMLElement>('#instagram-doomscroll-start-options'),
     instagramDoomscrollStartKind: element<HTMLSelectElement>('#instagram-doomscroll-start-kind'),
@@ -190,18 +188,6 @@ const elements = {
     postRunAt: element<HTMLInputElement>('#post-run-at'),
     postLocalTime: element<HTMLInputElement>('#post-local-time'),
     postRunWindow: element<HTMLInputElement>('#post-run-window'),
-    instagramPostRecurring: element<HTMLInputElement>('#instagram-post-recurring'),
-    instagramPostStartOptions: element<HTMLElement>('#instagram-post-start-options'),
-    instagramPostStartKind: element<HTMLSelectElement>('#instagram-post-start-kind'),
-    instagramPostOnceFields: element<HTMLElement>('#instagram-post-once-fields'),
-    instagramPostRecurringFields: element<HTMLElement>('#instagram-post-recurring-fields'),
-    instagramPostFrequency: element<HTMLSelectElement>('#instagram-post-frequency'),
-    instagramPostWeekdayFields: element<HTMLElement>('#instagram-post-weekday-fields'),
-    instagramPostWeekdayInputs: Array.from(document.querySelectorAll<HTMLInputElement>('#instagram-post-weekday-fields input[type="checkbox"]')),
-    instagramPostRunWindowField: element<HTMLElement>('#instagram-post-run-window-field'),
-    instagramPostRunAt: element<HTMLInputElement>('#instagram-post-run-at'),
-    instagramPostLocalTime: element<HTMLInputElement>('#instagram-post-local-time'),
-    instagramPostRunWindow: element<HTMLInputElement>('#instagram-post-run-window'),
     accountsForm: element<HTMLFormElement>('#accounts-form'),
     deviceAccounts: element<HTMLInputElement>('#device-accounts'),
     accountsResult: element<HTMLElement>('#accounts-result'),
@@ -299,9 +285,7 @@ function setTrainRecording(active: boolean): void {
     renderTrainSteps();
 }
 let orderedMedia: File[] = [];
-let instagramOrderedMedia: File[] = [];
 let postPoll: number | undefined;
-let instagramPostPoll: number | undefined;
 let connectionPoll: number | undefined;
 let connectionChecking = false;
 const browserTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
@@ -348,16 +332,6 @@ function updatePostSchedule(): void {
     elements.postRunAt.required = kind === 'once';
 }
 
-function updateInstagramPostSchedule(): void {
-    const recurring = elements.instagramPostRecurring.checked;
-    const kind = recurring ? elements.instagramPostFrequency.value : elements.instagramPostStartKind.value;
-    elements.instagramPostStartOptions.hidden = recurring;
-    elements.instagramPostOnceFields.hidden = recurring || kind !== 'once';
-    elements.instagramPostRecurringFields.hidden = !recurring;
-    elements.instagramPostWeekdayFields.hidden = !recurring || kind !== 'weekly';
-    elements.instagramPostRunWindowField.hidden = kind === 'now';
-    elements.instagramPostRunAt.required = kind === 'once';
-}
 
 elements.doomscrollRecurring.addEventListener('change', updateDoomscrollSchedule);
 elements.doomscrollStartKind.addEventListener('change', updateDoomscrollSchedule);
@@ -370,9 +344,6 @@ elements.instagramDoomscrollWeekdayInputs.forEach((input) => input.addEventListe
 elements.postRecurring.addEventListener('change', updatePostSchedule);
 elements.postStartKind.addEventListener('change', updatePostSchedule);
 elements.postFrequency.addEventListener('change', updatePostSchedule);
-elements.instagramPostRecurring.addEventListener('change', updateInstagramPostSchedule);
-elements.instagramPostStartKind.addEventListener('change', updateInstagramPostSchedule);
-elements.instagramPostFrequency.addEventListener('change', updateInstagramPostSchedule);
 elements.doomscrollForm.addEventListener('submit', () => {
     updateDoomscrollSchedule();
     elements.doomscrollResult.textContent = 'Starting…';
@@ -689,38 +660,11 @@ function renderMedia(): void {
     }));
 }
 
-function renderInstagramMedia(): void {
-    elements.instagramMediaList.replaceChildren(...instagramOrderedMedia.map((file, index) => {
-        const item = document.createElement('li');
-        const name = document.createElement('span');
-        name.textContent = `${index + 1}. ${file.name}`;
-        const up = document.createElement('button');
-        up.type = 'button'; up.textContent = '↑'; up.title = 'Move earlier'; up.disabled = index === 0;
-        const down = document.createElement('button');
-        down.type = 'button'; down.textContent = '↓'; down.title = 'Move later'; down.disabled = index === instagramOrderedMedia.length - 1;
-        const remove = document.createElement('button');
-        remove.type = 'button'; remove.textContent = 'Remove';
-        up.addEventListener('click', () => {
-            [instagramOrderedMedia[index - 1], instagramOrderedMedia[index]] = [instagramOrderedMedia[index]!, instagramOrderedMedia[index - 1]!];
-            renderInstagramMedia();
-        });
-        down.addEventListener('click', () => {
-            [instagramOrderedMedia[index], instagramOrderedMedia[index + 1]] = [instagramOrderedMedia[index + 1]!, instagramOrderedMedia[index]!];
-            renderInstagramMedia();
-        });
-        remove.addEventListener('click', () => { instagramOrderedMedia.splice(index, 1); renderInstagramMedia(); });
-        item.append(name, up, down, remove);
-        return item;
-    }));
-}
 
 function selectedDestination(): 'draft' | 'publish' {
     return (elements.postForm.elements.namedItem('destination') as RadioNodeList).value as 'draft' | 'publish';
 }
 
-function selectedInstagramDestination(): 'draft' | 'publish' {
-    return (elements.instagramPostForm.elements.namedItem('destination') as RadioNodeList).value as 'draft' | 'publish';
-}
 
 function postTiming(): Record<string, unknown> {
     const kind = elements.postRecurring.checked ? elements.postFrequency.value : elements.postStartKind.value;
@@ -738,23 +682,6 @@ function postTiming(): Record<string, unknown> {
     };
 }
 
-function instagramPostTiming(): Record<string, unknown> {
-    const kind = elements.instagramPostRecurring.checked
-        ? elements.instagramPostFrequency.value
-        : elements.instagramPostStartKind.value;
-    if (kind === 'now') return { kind };
-    if (kind === 'once') {
-        if (!elements.instagramPostRunAt.value) throw new Error('Choose a one-time start date');
-        return { kind, runAt: new Date(elements.instagramPostRunAt.value).toISOString() };
-    }
-    if (kind === 'daily') return { kind, localTime: elements.instagramPostLocalTime.value, timezone: browserTimezone };
-    const weekdays = selectedWeekdays(elements.instagramPostWeekdayInputs);
-    if (weekdays.length === 0) throw new Error('Choose at least one recurring day');
-    return {
-        kind: 'weekly', localTime: elements.instagramPostLocalTime.value, timezone: browserTimezone,
-        weekdays,
-    };
-}
 
 function updateDestination(): void {
     const publishing = selectedDestination() === 'publish';
@@ -763,12 +690,6 @@ function updateDestination(): void {
     elements.submitPost.textContent = publishing ? 'Post publicly' : 'Save to Drafts';
 }
 
-function updateInstagramDestination(): void {
-    const publishing = selectedInstagramDestination() === 'publish';
-    elements.instagramPublishConfirm.classList.toggle('visible', publishing);
-    if (!publishing) elements.instagramConfirmPublish.checked = false;
-    elements.submitInstagramPost.textContent = publishing ? 'Post publicly' : 'Save to Drafts';
-}
 
 async function pollPost(): Promise<void> {
     try {
@@ -790,25 +711,6 @@ async function pollPost(): Promise<void> {
     }
 }
 
-async function pollInstagramPost(): Promise<void> {
-    try {
-        const run = await jsonRequest<PostRun>(`/api/devices/${encodeURIComponent(udid)}/instagram/posts/current`);
-        elements.instagramPostResult.textContent = run.status === 'running'
-            ? 'Post automation is running. Follow its live output in the Automation log.'
-            : '';
-        if (run.status === 'running') {
-            instagramPostPoll = window.setTimeout(() => void pollInstagramPost(), 1000);
-        } else {
-            elements.submitInstagramPost.disabled = false;
-            elements.instagramPostResult.textContent = run.status === 'succeeded'
-                ? `Completed: ${run.destination === 'publish' ? 'post submitted' : 'draft saved'}.`
-                : 'Automation failed. Review the Automation log and the phone screen.';
-        }
-    } catch (error) {
-        elements.instagramPostResult.textContent = errorMessage(error);
-        elements.submitInstagramPost.disabled = false;
-    }
-}
 
 function formatDate(value: string | null): string {
     return value ? new Date(value).toLocaleString() : '—';
@@ -841,7 +743,10 @@ function pluginLabel(pluginId: SocialPluginId | undefined): string {
 function taskTitle(taskType: DeviceSchedule['taskType'], payload?: DeviceSchedule['payload'], pluginId?: SocialPluginId): string {
     const app = pluginLabel(pluginId);
     if (taskType === 'doomscroll' || taskType === 'doomscroll-following') {
-        const label = taskType === 'doomscroll-following' ? 'doomscroll following' : 'doomscroll';
+        const isInstagram = pluginId === 'com.git-agni.instagram';
+        const label = taskType === 'doomscroll-following'
+            ? (isInstagram ? 'engage following' : 'engagement')
+            : (isInstagram ? 'warmup' : 'warmup');
         const details = payload?.durationMinutes ? ` · ${payload.durationMinutes} min` : '';
         return `${app} ${label}${details}`;
     }
@@ -966,7 +871,39 @@ async function loadDeviceTasks(): Promise<void> {
     }
 }
 
-elements.openPost.addEventListener('click', () => elements.postDialog.showModal());
+function syncTikTokAccountSelects(accounts: string[]): void {
+    const previousDoomscroll = document.querySelector<HTMLSelectElement>('#doomscroll-account')?.value ?? '';
+    const previousFollowing = document.querySelector<HTMLSelectElement>('#following-doomscroll-account')?.value ?? '';
+    const previousPost = elements.postAccount.value;
+    elements.postAccount.replaceChildren(new Option("Don't switch (already signed in)", '', true, true));
+    const doomscrollAccount = element<HTMLSelectElement>('#doomscroll-account');
+    const followingAccount = element<HTMLSelectElement>('#following-doomscroll-account');
+    doomscrollAccount.replaceChildren(new Option("Don't switch", ''));
+    followingAccount.replaceChildren(new Option("Don't switch", ''));
+    for (const account of accounts) {
+        elements.postAccount.add(new Option(account, account));
+        doomscrollAccount.add(new Option(account, account));
+        followingAccount.add(new Option(account, account));
+    }
+    if (accounts.includes(previousPost)) elements.postAccount.value = previousPost;
+    if (accounts.includes(previousDoomscroll)) doomscrollAccount.value = previousDoomscroll;
+    if (accounts.includes(previousFollowing)) followingAccount.value = previousFollowing;
+}
+
+function preferSolePostAccount(): void {
+    // Keep "Don't switch" as the default — forced switches need calibrated Profile/switcher taps.
+}
+
+elements.openPost.addEventListener('click', () => {
+    const listed = [...elements.postAccount.options].filter((option) => option.value).map((option) => option.value);
+    if (listed.length === 0) {
+        const fromField = elements.deviceAccounts.value.split(',').map((value) => value.trim()).filter(Boolean)
+            .map((value) => value.startsWith('@') ? value : `@${value}`);
+        if (fromField.length > 0) syncTikTokAccountSelects(fromField);
+    }
+    preferSolePostAccount();
+    elements.postDialog.showModal();
+});
 elements.closePost.addEventListener('click', () => elements.postDialog.close());
 elements.cancelPost.addEventListener('click', () => elements.postDialog.close());
 elements.media.addEventListener('change', () => {
@@ -1007,73 +944,16 @@ elements.postForm.addEventListener('submit', async (event) => {
     try {
         const result = await jsonRequest<{ status: string }>(`/api/devices/${encodeURIComponent(udid)}/posts`, { method: 'POST', body: form });
         window.clearTimeout(postPoll);
+        elements.submitPost.disabled = false;
+        elements.postResult.textContent = '';
+        elements.postDialog.close();
         if (result.status === 'running') {
-            await pollPost();
-        } else {
-            elements.submitPost.disabled = false;
-            elements.postResult.textContent = 'Post automation scheduled. Follow its status and live output in the Automation log.';
+            void pollPost();
         }
         void loadDeviceTasks();
     } catch (error) {
         elements.postResult.textContent = errorMessage(error);
         elements.submitPost.disabled = false;
-    }
-});
-
-elements.openInstagramPost.addEventListener('click', () => elements.instagramPostDialog.showModal());
-elements.closeInstagramPost.addEventListener('click', () => elements.instagramPostDialog.close());
-elements.cancelInstagramPost.addEventListener('click', () => elements.instagramPostDialog.close());
-elements.instagramMedia.addEventListener('change', () => {
-    instagramOrderedMedia = Array.from(elements.instagramMedia.files ?? []);
-    renderInstagramMedia();
-});
-elements.instagramPostForm.addEventListener('change', (event) => {
-    if ((event.target as HTMLInputElement).name === 'destination') updateInstagramDestination();
-});
-elements.instagramPostForm.addEventListener('submit', async (event) => {
-    event.preventDefault();
-    const destination = selectedInstagramDestination();
-    if (instagramOrderedMedia.length === 0) { elements.instagramPostResult.textContent = 'Choose media first.'; return; }
-    if (instagramOrderedMedia.length > 3) { elements.instagramPostResult.textContent = 'Choose no more than three slideshow images.'; return; }
-    const videos = instagramOrderedMedia.filter(({ type }) => type.startsWith('video/'));
-    const images = instagramOrderedMedia.filter(({ type }) => type.startsWith('image/'));
-    if (!((videos.length === 1 && instagramOrderedMedia.length === 1) || images.length === instagramOrderedMedia.length)) {
-        elements.instagramPostResult.textContent = 'Choose exactly one video, or only slideshow images.'; return;
-    }
-    if (destination === 'publish' && !elements.instagramConfirmPublish.checked) {
-        elements.instagramPostResult.textContent = 'Confirm public publishing before continuing.'; return;
-    }
-    const form = new FormData();
-    for (const file of instagramOrderedMedia) form.append('media', file, file.name);
-    form.append('destination', destination);
-    form.append('musicUrl', elements.instagramMusicUrl.value);
-    form.append('caption', elements.instagramCaption.value);
-    form.append('account', elements.instagramPostAccount.value);
-    try {
-        form.append('timing', JSON.stringify(instagramPostTiming()));
-    } catch (error) {
-        elements.instagramPostResult.textContent = errorMessage(error); return;
-    }
-    form.append('runWindowMinutes', elements.instagramPostRunWindow.value);
-    form.append('recurringPublishConfirmed', String(destination !== 'publish' || elements.instagramConfirmPublish.checked));
-    elements.submitInstagramPost.disabled = true;
-    elements.instagramPostResult.textContent = 'Uploading media to the automation server…';
-    try {
-        const result = await jsonRequest<{ status: string }>(
-            `/api/devices/${encodeURIComponent(udid)}/instagram/posts`,
-            { method: 'POST', body: form },
-        );
-        window.clearTimeout(instagramPostPoll);
-        if (result.status === 'running') {
-            await pollInstagramPost();
-        } else {
-            elements.submitInstagramPost.disabled = false;
-            elements.instagramPostResult.textContent = 'Post automation scheduled. Follow its status and live output in the Automation log.';
-        }
-        void loadDeviceTasks();
-    } catch (error) {
-        elements.instagramPostResult.textContent = errorMessage(error);
-        elements.submitInstagramPost.disabled = false;
     }
 });
 
@@ -1086,18 +966,10 @@ elements.accountsForm.addEventListener('submit', async (event) => {
             headers: { 'content-type': 'application/json' },
             body: JSON.stringify({ accounts: elements.deviceAccounts.value.split(',') }),
         });
-        const previousDoomscroll = (document.querySelector<HTMLSelectElement>('#doomscroll-account'))?.value ?? '';
-        elements.postAccount.replaceChildren(new Option('Choose an account…', '', false, true));
-        elements.postAccount.options[0]!.disabled = true;
-        const doomscrollAccount = element<HTMLSelectElement>('#doomscroll-account');
-        doomscrollAccount.replaceChildren(new Option("Don't switch", ''));
-        for (const account of result.accounts) {
-            elements.postAccount.add(new Option(account, account));
-            doomscrollAccount.add(new Option(account, account));
-        }
-        if (result.accounts.includes(previousDoomscroll)) doomscrollAccount.value = previousDoomscroll;
+        syncTikTokAccountSelects(result.accounts);
         elements.deviceAccounts.value = result.accounts.join(', ');
         elements.accountsResult.textContent = result.accounts.length ? 'Accounts saved.' : 'Account switching is optional.';
+        elements.accountsDialog.close();
     } catch (error) {
         elements.accountsResult.textContent = errorMessage(error);
     }
@@ -1116,15 +988,17 @@ elements.instagramAccountsForm.addEventListener('submit', async (event) => {
             },
         );
         const previousDoomscroll = (document.querySelector<HTMLSelectElement>('#instagram-doomscroll-account'))?.value ?? '';
-        elements.instagramPostAccount.replaceChildren(new Option('Choose an account…', '', false, true));
-        elements.instagramPostAccount.options[0]!.disabled = true;
+        const previousFriends = (document.querySelector<HTMLSelectElement>('#instagram-following-doomscroll-account'))?.value ?? '';
         const doomscrollAccount = element<HTMLSelectElement>('#instagram-doomscroll-account');
+        const friendsAccount = element<HTMLSelectElement>('#instagram-following-doomscroll-account');
         doomscrollAccount.replaceChildren(new Option("Don't switch", ''));
+        friendsAccount.replaceChildren(new Option("Don't switch", ''));
         for (const account of result.accounts) {
-            elements.instagramPostAccount.add(new Option(account, account));
             doomscrollAccount.add(new Option(account, account));
+            friendsAccount.add(new Option(account, account));
         }
         if (result.accounts.includes(previousDoomscroll)) doomscrollAccount.value = previousDoomscroll;
+        if (result.accounts.includes(previousFriends)) friendsAccount.value = previousFriends;
         elements.instagramDeviceAccounts.value = result.accounts.join(', ');
         elements.instagramAccountsResult.textContent = result.accounts.length ? 'Accounts saved.' : 'Account switching is optional.';
     } catch (error) {
@@ -1139,12 +1013,18 @@ const cal = {
     screen: undefined as { width: number; height: number } | undefined,
     points: [] as CalPoint[],
     overrides: {} as Record<string, { x: number; y: number }>,
+    /** Keep unsaved per-app edits when switching TikTok ↔ Instagram. */
+    overridesByApp: {
+        tiktok: {} as Record<string, { x: number; y: number }>,
+        instagram: {} as Record<string, { x: number; y: number }>,
+    },
     armed: undefined as string | undefined,
+    dirty: false,
 };
 
 function calValue(name: string): { x: number; y: number } {
     const point = cal.points.find((entry) => entry.name === name)!;
-    return cal.overrides[name] ?? point.default;
+    return cal.overrides[name] ?? point.current ?? point.default;
 }
 
 function renderCalPoints(): void {
@@ -1161,7 +1041,11 @@ function renderCalPoints(): void {
         xy.className = 'cal-xy'; xy.textContent = `${value.x}, ${value.y}`;
         const reset = document.createElement('button');
         reset.type = 'button'; reset.className = 'cal-reset'; reset.title = 'Reset to profile'; reset.textContent = '↺';
-        reset.addEventListener('click', () => { delete cal.overrides[point.name]; renderCal(); });
+        reset.addEventListener('click', () => {
+            delete cal.overrides[point.name];
+            cal.dirty = true;
+            renderCal();
+        });
         li.append(pick, xy, reset);
         return li;
     }));
@@ -1195,6 +1079,11 @@ function renderCal(): void {
 }
 
 async function loadCalibratePoints(app: CalibrateApp): Promise<void> {
+    // Stash in-progress edits for the app we're leaving so switching
+    // TikTok ↔ Instagram does not throw away unsaved Instagram points.
+    if (cal.points.length > 0) {
+        cal.overridesByApp[cal.app] = { ...cal.overrides };
+    }
     const data = await jsonRequest<{
         app: CalibrateApp;
         profile: string;
@@ -1204,11 +1093,16 @@ async function loadCalibratePoints(app: CalibrateApp): Promise<void> {
     cal.app = data.app;
     cal.screen = data.screenSize;
     cal.points = data.points;
-    cal.overrides = {};
-    for (const point of data.points) if (point.overridden) cal.overrides[point.name] = point.current;
+    const fromServer: Record<string, { x: number; y: number }> = {};
+    for (const point of data.points) if (point.overridden) fromServer[point.name] = point.current;
+    const local = cal.overridesByApp[app] ?? {};
+    // Prefer local unsaved edits over the server snapshot for this app.
+    cal.overrides = { ...fromServer, ...local };
+    cal.overridesByApp[app] = { ...cal.overrides };
     cal.armed = undefined;
     elements.calApp.value = data.app;
     elements.calProfile.textContent = `${data.profile} · ${data.app === 'instagram' ? 'Instagram' : 'TikTok'}`;
+    elements.calSave.textContent = data.app === 'instagram' ? 'Save Instagram' : 'Save TikTok';
     renderCal();
 }
 
@@ -1285,8 +1179,12 @@ elements.openRemove.addEventListener('click', () => {
 });
 elements.closeRemove.addEventListener('click', () => elements.removeDialog.close());
 elements.calResetAll.addEventListener('click', () => {
-    if (!confirm('Reset all touch points to the profile defaults?')) return;
-    cal.overrides = {}; cal.armed = undefined; renderCal();
+    if (!confirm(`Reset all ${cal.app === 'instagram' ? 'Instagram' : 'TikTok'} touch points to the profile defaults?`)) return;
+    cal.overrides = {};
+    cal.overridesByApp[cal.app] = {};
+    cal.armed = undefined;
+    cal.dirty = true;
+    renderCal();
 });
 function calPointFromEvent(event: PointerEvent | MouseEvent): Point {
     if (!cal.screen) throw new Error('Calibration screen size is unavailable');
@@ -1319,6 +1217,8 @@ elements.calUnlock.addEventListener('click', () => void calSendAction({ type: 'u
 elements.calScreen.addEventListener('click', (event) => {
     if (elements.calControl.checked || !cal.armed || !cal.screen) return;
     cal.overrides[cal.armed] = calPointFromEvent(event);
+    cal.overridesByApp[cal.app] = { ...cal.overrides };
+    cal.dirty = true;
     cal.armed = undefined;
     renderCal();
 });
@@ -1342,20 +1242,28 @@ elements.calScreen.addEventListener('pointerup', (event) => {
 elements.calScreen.addEventListener('pointercancel', () => { calPointerStart = undefined; });
 elements.calSave.addEventListener('click', async () => {
     elements.calSave.disabled = true;
-    elements.calStatus.textContent = 'Saving…';
+    const appLabel = cal.app === 'instagram' ? 'Instagram' : 'TikTok';
+    elements.calStatus.textContent = `Saving ${appLabel}…`;
     try {
+        // Snapshot current edits into the per-app bag before PATCH.
+        cal.overridesByApp[cal.app] = { ...cal.overrides };
         const body = cal.app === 'instagram'
             ? { instagramCoordinates: cal.overrides }
             : { coordinates: cal.overrides };
+        // Empty object clears this app's overrides (Reset all → Save).
         await jsonRequest(`/api/devices/${encodeURIComponent(udid)}`, {
             method: 'PATCH',
             headers: { 'content-type': 'application/json' },
             body: JSON.stringify(body),
         });
+        // Re-load from server so the UI matches what was actually persisted.
+        cal.overridesByApp[cal.app] = {};
+        cal.dirty = false;
+        await loadCalibratePoints(cal.app);
         const count = Object.keys(cal.overrides).length;
-        elements.calStatus.textContent = count ? `Saved ${count} override${count === 1 ? '' : 's'}.` : 'Cleared all overrides.';
-        for (const point of cal.points) point.overridden = point.name in cal.overrides;
-        renderCal();
+        elements.calStatus.textContent = count
+            ? `Saved ${count} ${appLabel} override${count === 1 ? '' : 's'}.`
+            : `Cleared all ${appLabel} overrides.`;
     } catch (error) {
         elements.calStatus.textContent = errorMessage(error);
     } finally {
@@ -1416,11 +1324,9 @@ elements.removeDevice.addEventListener('click', async () => {
 });
 
 updateDestination();
-updateInstagramDestination();
 updateDoomscrollSchedule();
 updateInstagramDoomscrollSchedule();
 updatePostSchedule();
-updateInstagramPostSchedule();
 setInterval(() => { if (elements.tasksDialog.open) void loadDeviceTasks(); }, 5_000);
 
 const loadedSummary = document.querySelector<HTMLElement>('#device-summary[data-screen-width]');
@@ -1473,19 +1379,107 @@ interface StoredWorkflow {
     steps: unknown[];
 }
 
+async function swapDeviceActivity(response: Response): Promise<void> {
+    if (!response.ok) throw new Error(`Request failed (${response.status})`);
+    const html = await response.text();
+    const activity = document.querySelector('#device-activity');
+    if (activity) activity.outerHTML = html;
+}
+
+function appendBuiltinWorkflowRow(options: {
+    title: string;
+    meta: string;
+    onConfigure: () => void;
+    onRun5m: () => Promise<void>;
+}): void {
+    const row = document.createElement('div');
+    row.className = 'task-row';
+    row.innerHTML = `<div><strong>${options.title}</strong><div class="run-meta">${options.meta}</div></div>`;
+    const actions = document.createElement('div');
+    actions.className = 'inline-actions';
+    const configure = document.createElement('button');
+    configure.type = 'button';
+    configure.className = 'button secondary';
+    configure.textContent = 'Configure';
+    configure.addEventListener('click', () => options.onConfigure());
+    const run = document.createElement('button');
+    run.type = 'button';
+    run.className = 'button secondary';
+    run.textContent = 'Run 5m';
+    run.addEventListener('click', async () => {
+        run.disabled = true;
+        try {
+            await options.onRun5m();
+        } catch (error) {
+            setStatus(errorMessage(error), 'error');
+        } finally {
+            run.disabled = false;
+        }
+    });
+    actions.append(configure, run);
+    row.append(actions);
+    elements.workflowList.append(row);
+}
+
 async function loadWorkflows(): Promise<void> {
     elements.workflowList.classList.add('loading-card');
     elements.workflowList.innerHTML = '<span class="spinner" aria-hidden="true"></span>Loading workflows…';
     try {
         const data = await jsonRequest(`/api/devices/${encodeURIComponent(udid)}/tiktok/workflows`) as { workflows: StoredWorkflow[] };
         const workflows = data.workflows ?? [];
-        if (workflows.length === 0) {
-            elements.workflowList.classList.remove('loading-card');
-            elements.workflowList.textContent = 'No trained workflows yet. Use Train workflow on the live screen.';
-            return;
-        }
         elements.workflowList.classList.remove('loading-card');
         elements.workflowList.innerHTML = '';
+
+        appendBuiltinWorkflowRow({
+            title: 'Instagram · Engage following',
+            meta: 'Built-in · Reels → Friends · like/comment',
+            onConfigure: () => elements.instagramFollowingDoomscrollDialog.showModal(),
+            onRun5m: async () => {
+                const form = new FormData();
+                form.set('durationMinutes', '5');
+                form.set('personality', 'dialed');
+                form.set('likeEnabled', 'on');
+                form.set('commentEnabled', 'on');
+                form.set('commentText', '🔥');
+                form.set('scheduleKind', 'now');
+                form.set('timezone', Intl.DateTimeFormat().resolvedOptions().timeZone);
+                const response = await fetch(
+                    `/api/devices/${encodeURIComponent(udid)}/instagram/fragments/following-scroll-run`,
+                    { method: 'POST', body: form },
+                );
+                await swapDeviceActivity(response);
+            },
+        });
+
+        appendBuiltinWorkflowRow({
+            title: 'TikTok · Engagement',
+            meta: 'Built-in · Following feed · like/comment/save',
+            onConfigure: () => elements.followingDoomscrollDialog.showModal(),
+            onRun5m: async () => {
+                const form = new FormData();
+                form.set('durationMinutes', '5');
+                form.set('personality', 'dialed');
+                form.set('likeEnabled', 'on');
+                form.set('commentEnabled', 'on');
+                form.set('saveEnabled', 'on');
+                form.set('commentText', '🔥');
+                form.set('scheduleKind', 'now');
+                form.set('timezone', Intl.DateTimeFormat().resolvedOptions().timeZone);
+                const response = await fetch(
+                    `/api/devices/${encodeURIComponent(udid)}/fragments/following-scroll-run`,
+                    { method: 'POST', body: form },
+                );
+                await swapDeviceActivity(response);
+            },
+        });
+
+        if (workflows.length === 0) {
+            const empty = document.createElement('p');
+            empty.className = 'hint';
+            empty.textContent = 'No trained gesture workflows yet. Use Train workflow on the live screen.';
+            elements.workflowList.append(empty);
+            return;
+        }
         for (const workflow of workflows) {
             const row = document.createElement('div');
             row.className = 'task-row';
@@ -1506,10 +1500,7 @@ async function loadWorkflows(): Promise<void> {
                         method: 'POST',
                         body: form,
                     });
-                    if (!response.ok) throw new Error(`Replay failed (${response.status})`);
-                    const html = await response.text();
-                    const activity = document.querySelector('#device-activity');
-                    if (activity) activity.outerHTML = html;
+                    await swapDeviceActivity(response);
                 } catch (error) {
                     setStatus(errorMessage(error), 'error');
                 } finally {
@@ -1554,6 +1545,38 @@ elements.followingCommentEnabled.addEventListener('change', () => {
         elements.followingCommentText.value = '🔥';
     }
 });
+
+elements.instagramCommentEnabled.addEventListener('change', () => {
+    elements.instagramCommentText.disabled = !elements.instagramCommentEnabled.checked;
+    if (elements.instagramCommentEnabled.checked && !elements.instagramCommentText.value.trim()) {
+        elements.instagramCommentText.value = '🔥';
+    }
+});
+elements.instagramFollowingCommentEnabled.addEventListener('change', () => {
+    elements.instagramFollowingCommentText.disabled = !elements.instagramFollowingCommentEnabled.checked;
+    if (elements.instagramFollowingCommentEnabled.checked && !elements.instagramFollowingCommentText.value.trim()) {
+        elements.instagramFollowingCommentText.value = '🔥';
+    }
+});
+elements.openInstagramFollowingDoomscroll.addEventListener('click', () => elements.instagramFollowingDoomscrollDialog.showModal());
+elements.closeInstagramFollowingDoomscroll.addEventListener('click', () => elements.instagramFollowingDoomscrollDialog.close());
+elements.cancelInstagramFollowingDoomscroll.addEventListener('click', () => elements.instagramFollowingDoomscrollDialog.close());
+elements.instagramFollowingDoomscrollDurationButtons.forEach((button) => {
+    button.addEventListener('click', () => {
+        elements.instagramFollowingDoomscrollDuration.value = button.dataset.instagramFollowingDoomscrollDuration ?? '5';
+    });
+});
+elements.instagramFollowingDoomscrollForm.addEventListener('htmx:afterRequest', ((event: CustomEvent) => {
+    const detail = event.detail as { successful?: boolean; xhr?: XMLHttpRequest };
+    if (detail.successful) {
+        elements.instagramFollowingDoomscrollResult.textContent = 'Started.';
+        elements.instagramFollowingDoomscrollDialog.close();
+    } else {
+        elements.instagramFollowingDoomscrollResult.textContent = detail.xhr?.responseText
+            ? 'Could not start — check Activity.'
+            : 'Request failed.';
+    }
+}) as EventListener);
 elements.followingDoomscrollForm.addEventListener('htmx:afterRequest', ((event: CustomEvent) => {
     const detail = event.detail as { successful?: boolean; xhr?: XMLHttpRequest };
     if (detail.successful) {

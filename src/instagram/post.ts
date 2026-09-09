@@ -6,7 +6,7 @@ import { loadRegisteredDevices, resolveDeviceCoordinates, WdaRemoteControl } fro
 import type { PostManifest } from './post-manifest.js';
 import { type InstagramCoordinates } from './coordinates.js';
 import { coordinateProfile, registeredAccounts } from './runtime-settings.js';
-import { switchInstagramAccount, tapCoordinate } from './actions.js';
+import { switchInstagramAccount, tapCoordinate, dismissFeedTutorials } from './actions.js';
 import { recentPickerTargets } from './post-layout.js';
 import { isRedCheckboxChecked } from './pixel.js';
 
@@ -42,6 +42,9 @@ async function importMedia(manifest: PostManifest): Promise<number> {
         assetCount = result.value?.assetCount ?? 0;
     }
     if (!assetCount) throw new Error('WDA did not return the Photos asset count');
+    // Give Photos a moment to surface the import at the front of Recents before
+    // Instagram's picker opens — otherwise cell 0 can still be an older asset.
+    await new Promise((resolve) => setTimeout(resolve, 3000));
     return assetCount;
 }
 
@@ -62,7 +65,10 @@ async function clickOne(driver: Browser, label: string, selectors: string[]): Pr
 
 async function openComposer(
     driver: Browser,
+    remote: WdaRemoteControl,
+    udid: string,
     coordinates: InstagramCoordinates['instagram'],
+    screenSize: { width: number; height: number },
     musicUrl?: string,
 ): Promise<void> {
     if (musicUrl) {
@@ -74,15 +80,40 @@ async function openComposer(
         ]);
     } else {
         await driver.activateApp(process.env.INSTAGRAM_BUNDLE_ID ?? 'com.burbn.instagram');
-        await driver.pause(2500);
-        // Instagram's live feed can make accessibility queries hang. The center
-        // bottom navigation button is stable on the configured device layout.
+        await driver.pause(3000);
+        // Open app → Home feed (so Create chrome is visible) → Create (+) →
+        // Post content (Post vs Story/Reel) → gallery Upload.
+        console.log(`Opening Instagram Home at (${coordinates.homeTab.x}, ${coordinates.homeTab.y})`);
+        await tapCoordinate(
+            driver,
+            coordinates.homeTab.x,
+            coordinates.homeTab.y,
+            'Home tab',
+        );
+        await driver.pause(1500);
+        await dismissFeedTutorials(driver, remote, udid, screenSize);
+        console.log(`Opening Create (+) at (${coordinates.create.x}, ${coordinates.create.y})`);
         await tapCoordinate(
             driver,
             coordinates.create.x,
             coordinates.create.y,
             'Create',
         );
+        await driver.pause(1500);
+        console.log(
+            `Opening Post content at (${coordinates.postContent.x}, ${coordinates.postContent.y})`,
+        );
+        await tapCoordinate(
+            driver,
+            coordinates.postContent.x,
+            coordinates.postContent.y,
+            'Post content',
+        );
+        // Instagram's Post tile opens the gallery directly. Do NOT tap `upload`
+        // here — that coordinate is a TikTok-style camera→gallery control, and
+        // on this screen it lands on a bottom-row Recents cell (wrong file).
+        await driver.pause(3000);
+        return;
     }
     await driver.pause(2500);
     await tapCoordinate(driver, coordinates.upload.x, coordinates.upload.y, 'Upload');
@@ -122,7 +153,6 @@ async function chooseRecentMedia(
     driver: Browser, remote: WdaRemoteControl, udid: string, count: number, assetCount: number,
     coordinates: InstagramCoordinates['instagram'],
 ): Promise<void> {
-    const latestIndex = assetCount - 1;
     if (count > 1) {
         await ensureCheckboxState(driver, remote, udid, {
             x: coordinates.selectMultiple.x,
@@ -144,13 +174,18 @@ async function chooseRecentMedia(
             y: coordinates.useLayout.y,
         }, 'Use layout', false);
     } else {
-        const column = latestIndex % 3;
-        const x = coordinates.picker.cellX + (column * coordinates.picker.cellStep);
-        await tapCoordinate(driver, x, coordinates.picker.cellY, 'media 1/1');
+        console.log(
+            `Selecting newest import at (${coordinates.picker.cellX}, ${coordinates.picker.cellY}) `
+            + `(library assetCount=${assetCount})`,
+        );
+        await tapCoordinate(driver, coordinates.picker.cellX, coordinates.picker.cellY, 'media 1/1');
         await driver.pause(1000);
     }
     await tapCoordinate(driver, coordinates.pickerNext.x, coordinates.pickerNext.y, 'picker Next');
     await driver.pause(3000);
+    console.log(
+        `Tapping timeline editor Next at (${coordinates.editorNext.x}, ${coordinates.editorNext.y})`,
+    );
     await tapCoordinate(driver, coordinates.editorNext.x, coordinates.editorNext.y, 'editor Next');
     await driver.pause(3000);
 }
@@ -240,9 +275,23 @@ for (let attempt = 1; attempt <= REACH_CAPTION_SCREEN_ATTEMPTS && !reachedCaptio
         if (switchAccountName) {
             console.log(`Switching to Instagram account "${switchAccountName}"`);
             await driver.pause(2000);
-            await switchInstagramAccount(driver, deviceRemote, manifest.device.udid, switchAccountName, accountSwitchCoords);
+            try {
+                await switchInstagramAccount(driver, deviceRemote, manifest.device.udid, switchAccountName, accountSwitchCoords);
+            } catch (error) {
+                console.warn(
+                    `Account switch skipped (${error instanceof Error ? error.message : String(error)}). `
+                    + 'Continuing with the currently signed-in Instagram account.',
+                );
+            }
         }
-        await openComposer(driver, instagramCoordinates, manifest.musicUrl);
+        await openComposer(
+            driver,
+            deviceRemote,
+            manifest.device.udid,
+            instagramCoordinates,
+            coordinates.screenSize,
+            manifest.musicUrl,
+        );
         await chooseRecentMedia(driver, deviceRemote, manifest.device.udid, manifest.files.length, assetCount, instagramCoordinates);
         reachedCaptionScreen = true;
     } catch (error) {
@@ -258,22 +307,15 @@ for (let attempt = 1; attempt <= REACH_CAPTION_SCREEN_ATTEMPTS && !reachedCaptio
 if (!reachedCaptionScreen || !driver) {
     throw lastAttemptError instanceof Error
         ? lastAttemptError
-        : new Error(`Could not reach the Instagram caption screen after ${REACH_CAPTION_SCREEN_ATTEMPTS} attempts`);
+        : new Error(`Could not finish the Instagram upload after ${REACH_CAPTION_SCREEN_ATTEMPTS} attempts`);
 }
 
-try {
-    await addCaption(driver, instagramCoordinates, manifest.caption);
-    if (manifest.destination === 'publish') {
-        await tapCoordinate(driver, instagramCoordinates.finish.x, instagramCoordinates.finish.y, 'Post');
-        console.log('Instagram post submitted');
-        // The upload to Instagram continues in the background after this tap —
-        // tearing down the session too soon can interrupt it.
-        await driver.pause(60_000);
-    } else {
-        await tapCoordinate(driver, instagramCoordinates.draft.x, instagramCoordinates.draft.y, 'Drafts');
-        console.log('Instagram draft saved');
-        await driver.pause(2500);
-    }
-} finally {
-    await driver.deleteSession();
-}
+// Straight upload: stop once media is on the share/caption screen.
+// Draft / public Share taps are more UI surface than we want to maintain right now.
+console.log(
+    'Instagram straight upload complete — share/caption screen reached '
+    + `(destination=${manifest.destination}; not tapping Draft/Share).`,
+);
+await driver.pause(2000);
+await driver.deleteSession();
+

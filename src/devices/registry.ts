@@ -68,6 +68,13 @@ export async function saveRegisteredDevices(devices: RegisteredDevice[], registr
             device.coordinates = validateCoordinateOverrides(device.coordinates, device.coordinateProfile);
             if (Object.keys(device.coordinates).length === 0) delete device.coordinates;
         }
+        if (device.instagramCoordinates !== undefined) {
+            device.instagramCoordinates = validateCoordinateOverrides(
+                device.instagramCoordinates,
+                device.coordinateProfile,
+            );
+            if (Object.keys(device.instagramCoordinates).length === 0) delete device.instagramCoordinates;
+        }
         if (device.disabled !== true) delete device.disabled;
         if (unique.has(device.udid)) throw new Error(`Device ${device.udid} is already registered`);
         unique.add(device.udid);

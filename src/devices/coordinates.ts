@@ -9,6 +9,8 @@ export interface SocialAppCoordinates {
     homeTab: Point;
     accountSwitcher: Point;
     create: Point;
+    /** Instagram create-sheet "Post" tile (after +). Unused on TikTok. */
+    postContent: Point;
     upload: Point;
     selectMultiple: Point;
     useLayout: Point;
@@ -30,8 +32,10 @@ export interface SocialAppCoordinates {
     finish: Point;
     like: Point;
     save: Point;
-    /** Home feed "Following" sub-tab (TikTok). */
+    /** Home feed "Following" sub-tab (TikTok / Instagram). */
     followingTab: Point;
+    /** Instagram bottom-nav Reels tab (4th of 5). Unused on TikTok. */
+    reelsTab: Point;
     /** Open comments on the current video. */
     comment: Point;
     /** Comment sheet text field. */
@@ -72,6 +76,7 @@ const IPHONE8_TIKTOK: SocialAppCoordinates = {
     homeTab: { x: 38, y: 653 },
     accountSwitcher: { x: 185, y: 158 },
     create: { x: 187, y: 640 },
+    postContent: { x: 187, y: 640 },
     upload: { x: 30, y: 635 },
     selectMultiple: { x: 24, y: 618 },
     useLayout: { x: 24, y: 489 },
@@ -94,6 +99,7 @@ const IPHONE8_TIKTOK: SocialAppCoordinates = {
     like: { x: 345, y: 313 },
     save: { x: 345, y: 444 },
     followingTab: { x: 95, y: 78 },
+    reelsTab: { x: 262, y: 653 },
     comment: { x: 345, y: 378 },
     commentComposer: { x: 140, y: 620 },
     commentSend: { x: 340, y: 620 },
@@ -108,6 +114,8 @@ const IPHONE8_INSTAGRAM: SocialAppCoordinates = {
     homeTab: { x: 37, y: 650 },
     accountSwitcher: { x: 48, y: 72 },
     create: { x: 187, y: 650 },
+    // Create-sheet "Post" option (left tile) after tapping +.
+    postContent: { x: 70, y: 580 },
     upload: { x: 70, y: 620 },
     selectMultiple: { x: 340, y: 70 },
     useLayout: { x: 187, y: 520 },
@@ -127,10 +135,14 @@ const IPHONE8_INSTAGRAM: SocialAppCoordinates = {
     keyboardBack: { x: 22, y: 42 },
     draft: { x: 80, y: 70 },
     finish: { x: 340, y: 70 },
-    like: { x: 50, y: 520 },
-    save: { x: 50, y: 580 },
+    // Reels For You right rail (heart / comment / bookmark). Home-feed
+    // left-rail targets come later for the Following twin.
+    like: { x: 345, y: 360 },
+    save: { x: 345, y: 500 },
     followingTab: { x: 95, y: 78 },
-    comment: { x: 100, y: 520 },
+    // Bottom nav: Home · Search · Create · Reels · Profile
+    reelsTab: { x: 262, y: 650 },
+    comment: { x: 345, y: 430 },
     commentComposer: { x: 140, y: 600 },
     commentSend: { x: 340, y: 600 },
     liveClose: { x: 351, y: 70 },
@@ -144,6 +156,7 @@ function scaleSocial(base: SocialAppCoordinates, sx: number, sy: number): Social
         homeTab: p(base.homeTab),
         accountSwitcher: p(base.accountSwitcher),
         create: p(base.create),
+        postContent: p(base.postContent),
         upload: p(base.upload),
         selectMultiple: p(base.selectMultiple),
         useLayout: p(base.useLayout),
@@ -166,6 +179,7 @@ function scaleSocial(base: SocialAppCoordinates, sx: number, sy: number): Social
         like: p(base.like),
         save: p(base.save),
         followingTab: p(base.followingTab),
+        reelsTab: p(base.reelsTab),
         comment: p(base.comment),
         commentComposer: p(base.commentComposer),
         commentSend: p(base.commentSend),
@@ -214,10 +228,28 @@ export const DEVICE_COORDINATES = {
             save: { x: 372, y: 575 },
             comment: { x: 370, y: 552 },
             followingTab: { x: 163, y: 88 },
+            create: { x: 206, y: 818 },
             liveClose: { x: 385, y: 62 },
             swipe: { x: 130, startY: 721, endY: 197, durationMs: 380 },
         },
-        instagram: scaleSocial(IPHONE8_INSTAGRAM, SX_17, SY_17),
+        instagram: {
+            ...scaleSocial(IPHONE8_INSTAGRAM, SX_17, SY_17),
+            followingTab: { x: 72, y: 96 },
+            reelsTab: { x: 281, y: 852 },
+            // Center Create (+) — same chrome band as calibrated TikTok create.
+            create: { x: 206, y: 825 },
+            // Create-sheet "Post" tile after + (recalibrate via dashboard).
+            postContent: { x: 75, y: 760 },
+            // Blue "Next →" on the Reel/post timeline editor (bottom-right).
+            editorNext: { x: 348, y: 825 },
+            // Reels For You right rail on 402×874 — recalibrate via dashboard.
+            like: { x: 372, y: 470 },
+            comment: { x: 372, y: 555 },
+            save: { x: 372, y: 640 },
+            commentComposer: { x: 150, y: 786 },
+            commentSend: { x: 364, y: 786 },
+            swipe: { x: 130, startY: 721, endY: 197, durationMs: 380 },
+        },
     },
 } satisfies Record<string, DeviceCoordinates>;
 
@@ -262,31 +294,31 @@ export function coordinatesForProfile(profile: string = DEFAULT_COORDINATE_PROFI
 // (picker grid, swipe vector and the passcode keypad are not single points and
 // stay profile-level for now.)
 export const CALIBRATABLE_POINTS = [
-    'profileTab', 'homeTab', 'accountSwitcher', 'create', 'upload', 'selectMultiple', 'useLayout',
+    'profileTab', 'homeTab', 'accountSwitcher', 'create', 'postContent', 'upload', 'selectMultiple', 'useLayout',
     'pickerNext', 'editorNext', 'caption', 'keyboardBack', 'draft', 'finish', 'like', 'save',
-    'followingTab', 'comment', 'commentComposer', 'commentSend',
+    'followingTab', 'reelsTab', 'comment', 'commentComposer', 'commentSend',
 ] as const;
 
 export type CalibratablePoint = typeof CALIBRATABLE_POINTS[number];
 
 export const TIKTOK_POINT_LABELS: Record<CalibratablePoint, string> = {
     profileTab: 'TikTok: Profile tab', homeTab: 'TikTok: Home tab', accountSwitcher: 'TikTok: Account switcher',
-    create: 'TikTok: Create (+)', upload: 'TikTok: Upload', selectMultiple: 'TikTok: Select multiple', useLayout: 'TikTok: Use layout',
+    create: 'TikTok: Create (+)', postContent: 'TikTok: Post content (unused)', upload: 'TikTok: Upload', selectMultiple: 'TikTok: Select multiple', useLayout: 'TikTok: Use layout',
     pickerNext: 'TikTok: Media picker · Next', editorNext: 'TikTok: Editor · Next', caption: 'TikTok: Caption field',
     keyboardBack: 'TikTok: Keyboard · back', draft: 'TikTok: Save draft', finish: 'TikTok: Post / Finish',
     like: 'TikTok: Like button', save: 'TikTok: Save/bookmark button',
-    followingTab: 'TikTok: Following tab', comment: 'TikTok: Comment button',
+    followingTab: 'TikTok: Following tab', reelsTab: 'TikTok: Reels tab', comment: 'TikTok: Comment button',
     commentComposer: 'TikTok: Comment text field', commentSend: 'TikTok: Comment send',
 };
 
 export const INSTAGRAM_POINT_LABELS: Record<CalibratablePoint, string> = {
     profileTab: 'Instagram: Profile tab', homeTab: 'Instagram: Home tab', accountSwitcher: 'Instagram: Account switcher',
-    create: 'Instagram: Create (+)', upload: 'Instagram: Post from gallery', selectMultiple: 'Instagram: Select multiple',
+    create: 'Instagram: Create (+)', postContent: 'Instagram: Post content button', upload: 'Instagram: Post from gallery', selectMultiple: 'Instagram: Select multiple',
     useLayout: 'Instagram: Use layout',
-    pickerNext: 'Instagram: Media picker · Next', editorNext: 'Instagram: Editor · Next', caption: 'Instagram: Caption field',
+    pickerNext: 'Instagram: Media picker · Next', editorNext: 'Instagram: Timeline editor · Next', caption: 'Instagram: Caption field',
     keyboardBack: 'Instagram: Keyboard · back', draft: 'Instagram: Save draft', finish: 'Instagram: Share / Finish',
     like: 'Instagram: Like button', save: 'Instagram: Save/bookmark button',
-    followingTab: 'Instagram: Following tab', comment: 'Instagram: Comment button',
+    followingTab: 'Instagram: Following tab', reelsTab: 'Instagram: Reels tab', comment: 'Instagram: Comment button',
     commentComposer: 'Instagram: Comment text field', commentSend: 'Instagram: Comment send',
 };
 

@@ -337,10 +337,7 @@ try {
                 remoteControl.getScreenshot(udid),
                 remoteControl.getScreenInfo(udid),
             ]);
-            const identity = await identifyTikTokScreen(shot, screen.scale, {
-                like: seedLike,
-                save: seedSave,
-            });
+            const identity = await identifyFollowingScreen(shot, screen.scale);
             return identity.kind === 'comments';
         } catch {
             return false;
@@ -379,14 +376,21 @@ try {
         await driver!.pause(1400);
     }
 
-    async function openFollowingTab(): Promise<void> {
-        await tapCoordinate(driver!, homeTabX, homeTabY, 'Home tab');
-        await driver!.pause(900);
+    /** Soft retap Following only — avoid Home thrash / feed refresh loops. */
+    async function tapFollowingTabOnly(): Promise<void> {
         await tapCoordinate(driver!, followingTabX, followingTabY, 'Following tab');
-        await driver!.pause(1200);
+        await driver!.pause(1100);
+    }
+
+    async function identifyFollowingScreen(screenshot: Buffer, scale: number) {
+        return identifyTikTokScreen(screenshot, scale, {
+            like: seedLike,
+            save: seedSave,
+        }, { preferredFeed: 'following' });
     }
 
     async function ensureFollowingFeed(maxAttempts = 6): Promise<boolean> {
+        let softUnknownRetries = 0;
         for (let attempt = 1; attempt <= maxAttempts; attempt++) {
             if (stopRequested) return false;
             let screenshot: Buffer;
@@ -404,10 +408,7 @@ try {
                 continue;
             }
 
-            const identity = await identifyTikTokScreen(screenshot, scale, {
-                like: seedLike,
-                save: seedSave,
-            });
+            const identity = await identifyFollowingScreen(screenshot, scale);
             console.log(
                 `Screen identity: kind=${identity.kind} confidence=${identity.confidence.toFixed(2)}`
                 + `${identity.reasons.length ? ` [${identity.reasons.join(', ')}]` : ''} attempt=${attempt}`,
@@ -415,6 +416,7 @@ try {
 
             if (identity.kind === 'following') {
                 liveSwipeAttempts = 0;
+                softUnknownRetries = 0;
                 return true;
             }
 
@@ -440,19 +442,58 @@ try {
                 continue;
             }
 
-            // On For You (or unknown home feed) — tap Following without a full relaunch.
-            if (identity.kind === 'fyp') {
-                console.log('On For You — switching to Following tab');
+            // Clear For You only — soft Following tap, no Home refresh.
+            if (identity.kind === 'fyp' && identity.reasons.includes('forYouTabSelected')) {
+                console.log('On For You — tapping Following tab');
                 liveSwipeAttempts = 0;
-                await openFollowingTab();
+                softUnknownRetries = 0;
+                await tapFollowingTabOnly();
+                continue;
+            }
+
+            // Flaky frames after engage/sheet dismiss — wait once before Home relaunch.
+            if ((identity.kind === 'off_feed' || identity.kind === 'search') && softUnknownRetries < 1) {
+                softUnknownRetries += 1;
+                console.log(`Transient ${identity.kind} — wait/re-check before relaunch`);
+                await driver!.pause(900);
                 continue;
             }
 
             liveSwipeAttempts = 0;
+            softUnknownRetries = 0;
             await relaunchTikTok();
         }
         console.log('Could not recover to Following feed after identify/relaunch attempts');
         return false;
+    }
+
+    /** After like/comment/save — fix sheet or clear FYP without Home refresh. */
+    async function settleAfterEngage(): Promise<void> {
+        try {
+            const [shot, screen] = await Promise.all([
+                remoteControl.getScreenshot(udid),
+                remoteControl.getScreenInfo(udid),
+            ]);
+            const identity = await identifyFollowingScreen(shot, screen.scale);
+            console.log(
+                `Post-engage identity: kind=${identity.kind} confidence=${identity.confidence.toFixed(2)}`
+                + `${identity.reasons.length ? ` [${identity.reasons.join(', ')}]` : ''}`,
+            );
+            if (identity.kind === 'following') return;
+            if (identity.kind === 'comments') {
+                await dismissCommentSheet(driver!, isCommentSheetOpen);
+                return;
+            }
+            if (identity.kind === 'fyp' && identity.reasons.includes('forYouTabSelected')) {
+                await tapFollowingTabOnly();
+                return;
+            }
+            // Leave harder recovery to the next loop ensureFollowingFeed —
+            // avoid Home→Following refresh on toast/animation frames.
+            console.log(`Post-engage settle deferred (${identity.kind})`);
+        } catch (error) {
+            console.log(`Post-engage settle skipped: ${error instanceof Error ? error.message : String(error)}`);
+        }
     }
 
     const deadline = Date.now() + durationMinutes * 60_000;
@@ -482,9 +523,18 @@ try {
         await cancellableDelay(clampToDeadline(Date.now(), deadline, watchMs));
         if (stopRequested || !hasTimeRemaining(Date.now(), deadline)) break;
 
-        const willLike = likeEnabled && (carousel ? Math.random() < 0.85 : decideLike(profile));
-        const willSave = saveEnabled && (carousel ? Math.random() < 0.35 : decideSave(profile));
-        const willComment = !carousel && commentEnabled && decideComment(profile);
+        const willLike = likeEnabled && (
+            personality === 'dialed' ? decideLike(profile)
+                : carousel ? Math.random() < 0.85 : decideLike(profile)
+        );
+        const willSave = saveEnabled && (
+            personality === 'dialed' ? decideSave(profile)
+                : carousel ? Math.random() < 0.35 : decideSave(profile)
+        );
+        const willComment = commentEnabled && (
+            personality === 'dialed' ? decideComment(profile)
+                : !carousel && decideComment(profile)
+        );
 
         if (willLike || willSave || willComment) {
             try {
@@ -492,15 +542,13 @@ try {
                     remoteControl.getScreenshot(udid),
                     remoteControl.getScreenInfo(udid),
                 ]);
-                const identity = await identifyTikTokScreen(freshShot, screen.scale, {
-                    like: seedLike,
-                    save: seedSave,
-                });
+                const identity = await identifyFollowingScreen(freshShot, screen.scale);
                 console.log(
                     `Pre-engage identity: kind=${identity.kind} confidence=${identity.confidence.toFixed(2)}`
                     + `${identity.reasons.length ? ` [${identity.reasons.join(', ')}]` : ''}`,
                 );
-                if (identity.kind === 'live' || identity.kind === 'search' || identity.kind === 'off_feed' || identity.kind === 'fyp') {
+                if (identity.kind === 'live' || identity.kind === 'search' || identity.kind === 'off_feed'
+                    || (identity.kind === 'fyp' && identity.reasons.includes('forYouTabSelected'))) {
                     console.log(`Skipping engage; recovering from ${identity.kind}`);
                     await ensureFollowingFeed(2);
                     continue;
@@ -545,7 +593,7 @@ try {
             await postComment(driver, commentText, isCommentSheetOpen);
             comments += 1;
             await cancellableDelay(clampToDeadline(Date.now(), deadline, engagementSettleMs()));
-            await ensureFollowingFeed(2);
+            await settleAfterEngage();
         }
         if (stopRequested || !hasTimeRemaining(Date.now(), deadline)) break;
 
@@ -555,7 +603,7 @@ try {
             await tapCoordinate(driver, saveX, saveY, 'Save');
             saves += 1;
             await cancellableDelay(clampToDeadline(Date.now(), deadline, engagementSettleMs()));
-            await ensureFollowingFeed(2);
+            await settleAfterEngage();
         }
         if (stopRequested || !hasTimeRemaining(Date.now(), deadline)) break;
 

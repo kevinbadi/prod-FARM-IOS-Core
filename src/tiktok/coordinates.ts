@@ -2,7 +2,7 @@ export interface Point { x: number; y: number }
 export interface TikTokCoordinates {
     passcodeKeypad: { columnX: [number, number, number]; rowY: [number, number, number, number] };
     tiktok: {
-        profileTab: Point; homeTab: Point; accountSwitcher: Point; create: Point; upload: Point;
+        profileTab: Point; homeTab: Point; accountSwitcher: Point; create: Point; postContent: Point; upload: Point;
         selectMultiple: Point; useLayout: Point;
         picker: { circleX: number; columnStep: number; firstY: number; trayY: number; rowStep: number; cellX: number; cellStep: number; cellY: number };
         pickerNext: Point; editorNext: Point; caption: Point; keyboardBack: Point; draft: Point; finish: Point;
@@ -17,7 +17,7 @@ export const DEVICE_COORDINATES = {
         passcodeKeypad: { columnX: [103, 191, 275], rowY: [220, 347, 425, 506] },
         tiktok: {
             profileTab: { x: 338, y: 656 }, homeTab: { x: 38, y: 653 }, accountSwitcher: { x: 185, y: 158 },
-            create: { x: 187, y: 640 }, upload: { x: 30, y: 635 }, selectMultiple: { x: 24, y: 618 },
+            create: { x: 187, y: 640 }, postContent: { x: 187, y: 640 }, upload: { x: 30, y: 635 }, selectMultiple: { x: 24, y: 618 },
             useLayout: { x: 24, y: 489 },
             picker: { circleX: 106, columnStep: 126, firstY: 482, trayY: 360, rowStep: 125, cellX: 62, cellStep: 125, cellY: 526 },
             pickerNext: { x: 277, y: 617 }, editorNext: { x: 277, y: 637 }, caption: { x: 120, y: 236 },
@@ -34,7 +34,7 @@ export const DEVICE_COORDINATES = {
         passcodeKeypad: { columnX: [110, 205, 295], rowY: [288, 455, 557, 663] },
         tiktok: {
             profileTab: { x: 362, y: 860 }, homeTab: { x: 41, y: 856 }, accountSwitcher: { x: 198, y: 207 },
-            create: { x: 200, y: 839 }, upload: { x: 32, y: 832 }, selectMultiple: { x: 26, y: 810 },
+            create: { x: 206, y: 818 }, postContent: { x: 206, y: 818 }, upload: { x: 32, y: 832 }, selectMultiple: { x: 26, y: 810 },
             useLayout: { x: 26, y: 641 },
             picker: { circleX: 114, columnStep: 135, firstY: 631, trayY: 472, rowStep: 164, cellX: 66, cellStep: 135, cellY: 689 },
             pickerNext: { x: 297, y: 809 }, editorNext: { x: 297, y: 835 }, caption: { x: 129, y: 309 },

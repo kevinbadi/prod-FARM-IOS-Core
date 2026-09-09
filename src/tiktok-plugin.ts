@@ -65,7 +65,7 @@ type PostMedia = JsonObject & {
 type PostPayload = JsonObject & {
     media: PostMedia[];
     destination: 'draft' | 'publish';
-    account: string;
+    account?: string;
     caption?: string;
     musicUrl?: string;
     recurringPublishConfirmed?: boolean;
@@ -84,7 +84,7 @@ function optionalString(value: JsonValue | undefined, name: string): string | un
 
 function createDoomscrollTask(configuration: TikTokPluginConfiguration): TaskDefinition<DoomscrollPayload> {
     return {
-        type: 'doomscroll', version: 1, displayName: 'TikTok doomscroll',
+        type: 'doomscroll', version: 1, displayName: 'TikTok warmup',
         validate(value) {
             const input = objectPayload(value);
             const durationMinutes = input.durationMinutes;
@@ -111,7 +111,7 @@ function createDoomscrollTask(configuration: TikTokPluginConfiguration): TaskDef
                 ...(account ? { account } : {}),
             };
         },
-        summarize: (payload) => `Doomscroll · ${payload.personality} · ${payload.durationMinutes} min`,
+        summarize: (payload) => `Warmup · ${payload.personality} · ${payload.durationMinutes} min`,
         estimateDurationMs: (payload) => payload.durationMinutes * 60_000,
         retryPolicy: () => ({ retryLimit: 2, retryDelaySeconds: 60, retryBackoff: true }),
         supportsStop: () => true,
@@ -134,7 +134,7 @@ function createDoomscrollTask(configuration: TikTokPluginConfiguration): TaskDef
 
 function createFollowingDoomscrollTask(configuration: TikTokPluginConfiguration): TaskDefinition<FollowingDoomscrollPayload> {
     return {
-        type: 'doomscroll-following', version: 1, displayName: 'TikTok doomscroll following',
+        type: 'doomscroll-following', version: 1, displayName: 'TikTok engagement',
         validate(value) {
             const input = objectPayload(value);
             const durationMinutes = input.durationMinutes;
@@ -164,7 +164,7 @@ function createFollowingDoomscrollTask(configuration: TikTokPluginConfiguration)
                 ...(account ? { account } : {}),
             };
         },
-        summarize: (payload) => `Following · ${payload.personality} · ${payload.durationMinutes} min`,
+        summarize: (payload) => `Engagement · ${payload.personality} · ${payload.durationMinutes} min`,
         estimateDurationMs: (payload) => payload.durationMinutes * 60_000,
         retryPolicy: () => ({ retryLimit: 2, retryDelaySeconds: 60, retryBackoff: true }),
         supportsStop: () => true,
@@ -258,7 +258,10 @@ function createPostTask(configuration: TikTokPluginConfiguration): TaskDefinitio
                 return { assetId: candidate.assetId, name: candidate.name, mimeType: candidate.mimeType };
             });
             if (input.destination !== 'draft' && input.destination !== 'publish') throw new Error('Invalid post destination');
-            if (typeof input.account !== 'string' || !input.account.trim()) throw new Error('Choose a TikTok account');
+            const account = optionalString(input.account, 'account')?.trim();
+            if (account && !/^@[A-Za-z0-9._]{1,64}$/.test(account)) {
+                throw new Error('TikTok handles may contain letters, numbers, periods, and underscores');
+            }
             const caption = optionalString(input.caption, 'caption');
             if (caption && caption.length > 2200) throw new Error('Caption must be 2,200 characters or fewer');
             const musicUrl = optionalString(input.musicUrl, 'musicUrl');
@@ -273,7 +276,8 @@ function createPostTask(configuration: TikTokPluginConfiguration): TaskDefinitio
                 throw new Error('Recurring public posts require explicit confirmation');
             }
             return {
-                media, destination: input.destination, account: input.account,
+                media, destination: input.destination,
+                ...(account ? { account } : {}),
                 ...(caption ? { caption } : {}), ...(musicUrl ? { musicUrl } : {}),
                 ...(input.recurringPublishConfirmed === true ? { recurringPublishConfirmed: true } : {}),
             };
@@ -291,7 +295,8 @@ function createPostTask(configuration: TikTokPluginConfiguration): TaskDefinitio
             });
             const manifestPath = path.join(context.workspaceDirectory, 'manifest.json');
             await writeFile(manifestPath, JSON.stringify({
-                device: context.device, files, destination: payload.destination, account: payload.account,
+                device: context.device, files, destination: payload.destination,
+                ...(payload.account ? { account: payload.account } : {}),
                 ...(payload.caption ? { caption: payload.caption } : {}),
                 ...(payload.musicUrl ? { musicUrl: payload.musicUrl } : {}),
             }));
@@ -495,7 +500,7 @@ export function createTikTokPlugin(configuration: TikTokPluginConfiguration = {}
                                 pluginId === 'com.git-agni.tiktok' && taskType === 'doomscroll-following'
                             ));
                             if (mine.some(({ status }) => status === 'running')) {
-                                throw new Error('A Following doomscroll is already running on this device. Stop it from Activity, then start again.');
+                                throw new Error('An engagement session is already running on this device. Stop it from Activity, then start again.');
                             }
                             await context.scheduler.clearDeviceQueue(device.udid, {
                                 pluginId: 'com.git-agni.tiktok',
@@ -593,7 +598,7 @@ export function createTikTokPlugin(configuration: TikTokPluginConfiguration = {}
                                 pluginId === 'com.git-agni.tiktok' && taskType === 'doomscroll'
                             ));
                             if (mine.some(({ status }) => status === 'running')) {
-                                throw new Error('A TikTok doomscroll is already running on this device. Stop it from Activity, then start again.');
+                                throw new Error('A warmup session is already running on this device. Stop it from Activity, then start again.');
                             }
                             await context.scheduler.clearDeviceQueue(device.udid, {
                                 pluginId: 'com.git-agni.tiktok',
@@ -661,8 +666,7 @@ export function createTikTokPlugin(configuration: TikTokPluginConfiguration = {}
                     }
                     const destination = fields.get('destination');
                     if (destination !== 'draft' && destination !== 'publish') throw new Error('Choose Draft or Post');
-                    const account = fields.get('account')?.trim();
-                    if (!account) throw new Error('Choose a TikTok account');
+                    const account = fields.get('account')?.trim() || undefined;
                     const timing = fields.has('timing') ? JSON.parse(fields.get('timing')!) as ScheduleTiming : { kind: 'now' } as const;
                     const stored = await context.scheduler.registerAssets(await Promise.all(files.map(async (file) => ({
                         relativePath: path.relative(dataRoot, file.path), originalName: file.name, mimeType: file.mimeType,
@@ -679,7 +683,8 @@ export function createTikTokPlugin(configuration: TikTokPluginConfiguration = {}
                             pluginId: 'com.git-agni.tiktok', taskType: 'post', taskVersion: 1,
                             payload: {
                                 media: stored.map(({ id, name, mimeType }) => ({ assetId: id, name, mimeType })),
-                                destination, account,
+                                destination,
+                                ...(account ? { account } : {}),
                                 ...(fields.get('caption')?.trim() ? { caption: fields.get('caption')!.trim() } : {}),
                                 ...(fields.get('musicUrl')?.trim() ? { musicUrl: fields.get('musicUrl')!.trim() } : {}),
                                 ...(fields.get('recurringPublishConfirmed') === 'true' ? { recurringPublishConfirmed: true } : {}),

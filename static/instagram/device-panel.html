@@ -1,20 +1,11 @@
 <style>.instagram-form{display:grid;gap:10px;margin:12px 0 24px}.instagram-form label{display:grid;gap:4px}.timing{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px}</style>
 <p>Schedule one-off or recurring private workflows. Device-specific accounts and coordinates belong in <code>pluginData["com.git-agni.instagram"]</code>.</p>
 <form id="instagram-doomscroll-form" class="instagram-form">
-  <h3>Doomscroll</h3>
+  <h3>Warmup</h3>
   <div class="timing"><label>Duration (minutes)<input name="duration" type="number" min="1" max="180" value="5" required></label><label>Personality<select name="personality"><option>casual</option><option>skimmer</option><option>engaged</option></select></label><label>Account<input name="account" autocomplete="off"></label></div>
-  <div><label><input name="like" type="checkbox" checked> Like</label> <label><input name="save" type="checkbox" checked> Save</label></div>
+  <div><label><input name="like" type="checkbox" checked> Like</label> <label><input name="comment" type="checkbox"> Comment</label></div>
   <div class="timing" data-timing><label>Schedule<select name="timingKind"><option value="now">Run now</option><option value="once">Once</option><option value="daily">Daily</option><option value="weekly">Weekly</option></select></label><label>When / local time<input name="time" type="datetime-local"></label><label>Weekdays (0–6)<input name="weekdays" placeholder="1,3,5"></label></div>
-  <button type="submit">Schedule doomscroll</button>
-</form>
-<form id="instagram-post-form" class="instagram-form">
-  <h3>Post media</h3>
-  <label>Media (1–3 files)<input name="media" type="file" accept="image/*,video/*" multiple required></label>
-  <div class="timing"><label>Account<input name="account" required autocomplete="off"></label><label>Destination<select name="destination"><option value="draft">Draft</option><option value="publish">Publish</option></select></label><label>Music URL<input name="musicUrl" type="url"></label></div>
-  <label>Caption<textarea name="caption" maxlength="2200"></textarea></label>
-  <label><input name="recurringPublishConfirmed" type="checkbox"> I explicitly approve recurring public posts</label>
-  <div class="timing" data-timing><label>Schedule<select name="timingKind"><option value="now">Run now</option><option value="once">Once</option><option value="daily">Daily</option><option value="weekly">Weekly</option></select></label><label>When / local time<input name="time" type="datetime-local"></label><label>Weekdays (0–6)<input name="weekdays" placeholder="1,3,5"></label></div>
-  <button type="submit">Upload and schedule</button>
+  <button type="submit">Schedule warmup</button>
 </form>
 <p id="instagram-form-result" class="muted"></p>
 <script>
@@ -41,21 +32,7 @@
   }
   document.getElementById('instagram-doomscroll-form').addEventListener('submit', async function (event) {
     event.preventDefault(); result.textContent = 'Scheduling…';
-    try { var form = new FormData(event.currentTarget); var payload = {durationMinutes: Number(form.get('duration')), personality: form.get('personality'), likeEnabled: form.has('like'), saveEnabled: form.has('save')}; if (form.get('account')) payload.account = form.get('account'); await schedule('doomscroll', payload, timing(form)); } catch (error) { result.textContent = error.message; }
-  });
-  document.getElementById('instagram-post-form').addEventListener('submit', async function (event) {
-    event.preventDefault(); result.textContent = 'Uploading…'; var assets = [];
-    try {
-      var form = new FormData(event.currentTarget); var files = form.getAll('media').filter(function (file) { return file.size; });
-      if (files.length < 1 || files.length > 3) throw new Error('Choose one to three files.');
-      var upload = new FormData(); files.forEach(function (file) { upload.append('media', file); });
-      var uploadResponse = await fetch('/api/assets', {method: 'POST', body: upload});
-      if (!uploadResponse.ok) throw new Error((await uploadResponse.json()).error || 'Upload failed');
-      assets = await uploadResponse.json();
-      var payload = {media: assets.map(function (asset) { return {assetId: asset.id, name: asset.name, mimeType: asset.mimeType}; }), destination: form.get('destination'), account: form.get('account')};
-      if (form.get('caption')) payload.caption = form.get('caption'); if (form.get('musicUrl')) payload.musicUrl = form.get('musicUrl'); if (form.has('recurringPublishConfirmed')) payload.recurringPublishConfirmed = true;
-      await schedule('post', payload, timing(form), assets.map(function (asset) { return asset.id; }));
-    } catch (error) { if (assets.length) await fetch('/api/assets', {method: 'DELETE', headers: {'content-type': 'application/json'}, body: JSON.stringify({assetIds: assets.map(function (asset) { return asset.id; })})}); result.textContent = error.message; }
+    try { var form = new FormData(event.currentTarget); var payload = {durationMinutes: Number(form.get('duration')), personality: form.get('personality'), likeEnabled: form.has('like'), commentEnabled: form.has('comment')}; if (form.get('account')) payload.account = form.get('account'); await schedule('doomscroll', payload, timing(form)); } catch (error) { result.textContent = error.message; }
   });
 })();
 </script>

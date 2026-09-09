@@ -2,14 +2,15 @@ import { remote, type Browser } from 'webdriverio';
 
 import { loadRegisteredDevices, resolveDeviceCoordinates, WdaRemoteControl } from '@git-agni/phone-farm-core';
 import { coordinateProfile, registeredAccounts } from './runtime-settings.js';
-import { switchInstagramAccount, tapCoordinate } from './actions.js';
+import { switchInstagramAccount, tapCoordinate, typeText } from './actions.js';
 import { detectEngagementControls } from './engagement-controls.js';
+import { identifyInstagramScreen } from './screen-identity.js';
 import {
     PROFILES,
     clampToDeadline,
+    decideComment,
     decideLike,
     decideLinger,
-    decideSave,
     hasTimeRemaining,
     isPersonality,
     pickWatchDurationMs,
@@ -48,14 +49,18 @@ const udid: string = udidEnv;
 
 const personalityRaw = process.env.DOOMSCROLL_PERSONALITY ?? 'casual';
 if (!isPersonality(personalityRaw)) {
-    throw new Error(`DOOMSCROLL_PERSONALITY must be one of skimmer, casual, engaged; received ${personalityRaw}`);
+    throw new Error(`DOOMSCROLL_PERSONALITY must be one of skimmer, casual, engaged, dialed; received ${personalityRaw}`);
 }
 const personality = personalityRaw;
 const profile = PROFILES[personality];
 
 const durationMinutes = boundedInteger('DOOMSCROLL_DURATION_MINUTES', 5, 1, 180);
 const likeEnabled = booleanEnv('DOOMSCROLL_LIKE_ENABLED', true);
-const saveEnabled = booleanEnv('DOOMSCROLL_SAVE_ENABLED', true);
+const commentEnabled = booleanEnv('DOOMSCROLL_COMMENT_ENABLED', false);
+const commentText = (process.env.DOOMSCROLL_COMMENT_TEXT ?? '').trim();
+if (commentEnabled && !commentText) {
+    throw new Error('DOOMSCROLL_COMMENT_TEXT is required when DOOMSCROLL_COMMENT_ENABLED=true');
+}
 const switchAccountName = process.env.INSTAGRAM_SWITCH_ACCOUNT?.trim() || undefined;
 const registeredDevice = (await loadRegisteredDevices()).find((device) => device.udid === udid);
 const coordinates = resolveDeviceCoordinates(
@@ -70,14 +75,8 @@ const accountSwitchCoords = {
     switcherTriggerX: instagramCoordinates.accountSwitcher.x,
     switcherTriggerY: instagramCoordinates.accountSwitcher.y,
 };
-// switchInstagramAccount ends on the Profile tab (it re-checks there to verify
-// the switch). The scroll loop below expects the Home feed, so only
-// doomscroll needs to navigate back — instagram-post.ts's Create button works
-// from any bottom-nav tab.
-const { x: homeTabX, y: homeTabY } = instagramCoordinates.homeTab;
+const { x: reelsTabX, y: reelsTabY } = instagramCoordinates.reelsTab;
 
-// Fail fast, before unlocking or launching Instagram, if the requested account
-// isn't one this device is registered for.
 const allowedAccounts = switchAccountName
     ? registeredAccounts(registeredDevice)
     : [];
@@ -85,8 +84,12 @@ if (switchAccountName && !allowedAccounts.includes(switchAccountName)) {
     throw new Error(`Instagram account "${switchAccountName}" is not listed in devices.json for device ${udid}`);
 }
 let { x: likeX, y: likeY } = instagramCoordinates.like;
-let { x: saveX, y: saveY } = instagramCoordinates.save;
-const { x: swipeX, startY: swipeStartY, endY: swipeEndY, durationMs: swipeDurationMs } = instagramCoordinates.swipe;
+const { x: commentX, y: commentY } = instagramCoordinates.comment;
+const { x: commentComposerX, y: commentComposerY } = instagramCoordinates.commentComposer;
+const { x: commentSendX, y: commentSendY } = instagramCoordinates.commentSend;
+const { startY: swipeStartY, endY: swipeEndY, durationMs: swipeDurationMs } = instagramCoordinates.swipe;
+// Left-of-center vertical flick avoids the Reels engagement rail.
+const swipeAxisX = Math.round(coordinates.screenSize.width * 0.38);
 const wdaUrl = process.env.WDA_URL;
 const instagramBundleId = process.env.INSTAGRAM_BUNDLE_ID ?? 'com.burbn.instagram';
 
@@ -101,8 +104,6 @@ const capabilities: WebdriverIO.Capabilities & Record<string, unknown> = {
     'appium:newCommandTimeout': 120,
     'appium:wdaLaunchTimeout': 120000,
     'appium:wdaConnectionTimeout': 120000,
-    // Instagram's video feed never becomes fully idle. Waiting for quiescence can
-    // make otherwise-completed gestures block until the WDA proxy times out.
     'appium:waitForIdleTimeout': 0,
     'appium:showXcodeLog': process.env.SHOW_XCODE_LOG === 'true',
 };
@@ -125,9 +126,6 @@ if (!wdaUrl && process.env.WDA_BOOTSTRAP_PATH) {
     capabilities['appium:bootstrapPath'] = process.env.WDA_BOOTSTRAP_PATH;
 }
 
-// Cooperative cancellation: a Stop request sends SIGTERM (see
-// src/automations/runner.ts). Every wait below races against stopPromise so
-// a stop interrupts immediately instead of waiting out the current sleep.
 let stopRequested = false;
 let resolveStop: () => void = () => {};
 const stopPromise = new Promise<void>((resolve) => { resolveStop = resolve; });
@@ -153,7 +151,6 @@ function interactionPauseMs(): number {
     return Math.round(350 + Math.random() * 450);
 }
 
-/** Longer settle so Instagram can finish heart/bookmark animations before the next tap or swipe. */
 function engagementSettleMs(): number {
     return Math.round(750 + Math.random() * 850);
 }
@@ -162,10 +159,103 @@ let driver: Browser | undefined;
 let videosViewed = 0;
 let swipes = 0;
 let likes = 0;
-let saves = 0;
+let comments = 0;
+let recoveries = 0;
 const runStartedAt = Date.now();
 
-console.log(`Starting doomscroll: profile=${personality} requestedDurationMinutes=${durationMinutes} likeEnabled=${likeEnabled} saveEnabled=${saveEnabled}`);
+console.log(
+    `Starting Instagram Reels doomscroll: profile=${personality} requestedDurationMinutes=${durationMinutes}`
+    + ` likeEnabled=${likeEnabled} commentEnabled=${commentEnabled}`,
+);
+
+async function dismissCommentSheet(
+    browser: Browser,
+    isStillOpen?: () => Promise<boolean>,
+): Promise<void> {
+    const width = coordinates.screenSize.width;
+    const height = coordinates.screenSize.height;
+    // Instagram Reels comment sheet: X / dismiss first so scroll can continue.
+    await tapCoordinate(
+        browser,
+        Math.round(width * 0.92),
+        Math.round(height * 0.30),
+        'Comment dismiss',
+    );
+    await browser.pause(600);
+    if (!isStillOpen || !(await isStillOpen())) return;
+
+    await tapCoordinate(
+        browser,
+        Math.round(width * 0.5),
+        Math.round(height * 0.14),
+        'Above comments sheet',
+    );
+    await browser.pause(550);
+    if (!(await isStillOpen())) return;
+
+    await tapCoordinate(
+        browser,
+        Math.round(width * 0.92),
+        Math.round(height * 0.24),
+        'Comment dismiss retry',
+    );
+    await browser.pause(550);
+    if (!(await isStillOpen())) return;
+
+    const grabX = Math.round(width * 0.5);
+    const grabY = Math.round(height * 0.36);
+    console.log('Comment sheet still open — dragging it closed');
+    await browser.performActions([{
+        type: 'pointer',
+        id: 'finger',
+        parameters: { pointerType: 'touch' },
+        actions: [
+            { type: 'pointerMove', duration: 0, x: grabX, y: grabY },
+            { type: 'pointerDown', button: 0 },
+            { type: 'pause', duration: 80 },
+            { type: 'pointerMove', duration: 320, x: grabX, y: Math.round(height * 0.92) },
+            { type: 'pointerUp', button: 0 },
+        ],
+    }]);
+    await browser.releaseActions();
+    await browser.pause(500);
+}
+
+async function postComment(
+    browser: Browser,
+    text: string,
+    isCommentSheetOpen?: () => Promise<boolean>,
+): Promise<void> {
+    await tapCoordinate(browser, commentX, commentY, 'Comment');
+    await browser.pause(800);
+    await tapCoordinate(browser, commentComposerX, commentComposerY, 'Comment composer');
+    await browser.pause(400);
+    await typeText(browser, text);
+    await browser.pause(300);
+    await tapCoordinate(browser, commentSendX, commentSendY, 'Comment send');
+    await browser.pause(900);
+    console.log('Dismissing comment sheet after send (dismiss button then fallbacks)');
+    await dismissCommentSheet(browser, isCommentSheetOpen);
+}
+
+async function swipeNext(browser: Browser): Promise<void> {
+    const startY = Math.max(swipeStartY, Math.round(coordinates.screenSize.height * 0.72));
+    const endY = Math.min(swipeEndY, Math.round(coordinates.screenSize.height * 0.22));
+    const duration = Math.min(swipeDurationMs, 420);
+    await browser.performActions([{
+        type: 'pointer',
+        id: 'finger',
+        parameters: { pointerType: 'touch' },
+        actions: [
+            { type: 'pointerMove', duration: 0, x: swipeAxisX, y: startY },
+            { type: 'pointerDown', button: 0 },
+            { type: 'pause', duration: 40 },
+            { type: 'pointerMove', duration: duration, x: swipeAxisX, y: endY },
+            { type: 'pointerUp', button: 0 },
+        ],
+    }]);
+    await browser.releaseActions();
+}
 
 try {
     const remoteControl = new WdaRemoteControl({
@@ -193,93 +283,247 @@ try {
     if (switchAccountName) {
         console.log(`Switching to Instagram account "${switchAccountName}"`);
         await switchInstagramAccount(driver, remoteControl, udid, switchAccountName, accountSwitchCoords);
-        // switchInstagramAccount leaves the app on the Profile tab; the loop
-        // below expects the Home feed.
-        await tapCoordinate(driver, homeTabX, homeTabY, 'Home tab');
-        await driver.pause(1500);
     }
 
-    // Seeds from profile + optional dashboard calibration. Each engage video
-    // re-detects near these points so rail drift does not miss the icons.
+    // Always land on Reels For You before the agentic loop.
+    await tapCoordinate(driver, reelsTabX, reelsTabY, 'Reels tab');
+    await driver.pause(1500);
+
     const seedLike = { x: likeX, y: likeY };
-    const seedSave = { x: saveX, y: saveY };
+    // Engagement refine still expects a paired save seed; Reels has no save tap.
+    const seedSaveAnchor = { x: likeX, y: Math.min(likeY + 170, coordinates.screenSize.height - 80) };
     console.log(
-        `Instagram engagement seeds: like=(${seedLike.x}, ${seedLike.y}) save=(${seedSave.x}, ${seedSave.y})`
+        `Instagram Reels engagement seeds: like=(${seedLike.x}, ${seedLike.y})`
+            + ` comment=(${commentX}, ${commentY}) reelsTab=(${reelsTabX}, ${reelsTabY})`
             + ` profile=${coordinateProfile(registeredDevice)}`
-            + `${registeredDevice?.instagramCoordinates?.like || registeredDevice?.instagramCoordinates?.save ? ' (calibrated)' : ''}`,
+            + `${registeredDevice?.instagramCoordinates?.like || registeredDevice?.instagramCoordinates?.comment || registeredDevice?.instagramCoordinates?.reelsTab ? ' (calibrated)' : ''}`,
     );
 
-    async function refineEngagementControls(): Promise<void> {
+    function applyEngagementSeeds(): void {
+        likeX = seedLike.x;
+        likeY = seedLike.y;
+    }
+
+    function applyDetectedEngagement(detected: { like: { x: number; y: number }; save: { x: number; y: number }; confidence: number }): void {
+        ({ x: likeX, y: likeY } = detected.like);
+        seedLike.x = likeX;
+        seedLike.y = likeY;
+        console.log(
+            `Refined Instagram like control: like=(${likeX}, ${likeY})`
+                + ` confidence=${detected.confidence.toFixed(3)}`,
+        );
+    }
+
+    async function identifyReelsScreen(screenshot: Buffer, scale: number) {
+        return identifyInstagramScreen(screenshot, scale, {
+            like: seedLike,
+            save: seedSaveAnchor,
+        }, { preferredFeed: 'reels' });
+    }
+
+    async function isCommentSheetOpen(): Promise<boolean> {
         try {
-            const [screenshot, screen] = await Promise.all([
+            const [shot, screen] = await Promise.all([
                 remoteControl.getScreenshot(udid),
                 remoteControl.getScreenInfo(udid),
             ]);
-            const detected = await detectEngagementControls(screenshot, screen.scale, {
-                like: seedLike,
-                save: seedSave,
-            });
-            if (detected) {
-                ({ x: likeX, y: likeY } = detected.like);
-                ({ x: saveX, y: saveY } = detected.save);
-                seedLike.x = likeX;
-                seedLike.y = likeY;
-                seedSave.x = saveX;
-                seedSave.y = saveY;
-                console.log(
-                    `Refined Instagram engagement controls: like=(${likeX}, ${likeY}) save=(${saveX}, ${saveY})`
-                        + ` confidence=${detected.confidence.toFixed(3)}`,
-                );
-            } else {
-                likeX = seedLike.x;
-                likeY = seedLike.y;
-                saveX = seedSave.x;
-                saveY = seedSave.y;
-                console.log(
-                    `Could not refine Instagram engagement controls; using seeds like=(${likeX}, ${likeY}) save=(${saveX}, ${saveY})`,
-                );
-            }
+            const identity = await identifyReelsScreen(shot, screen.scale);
+            return identity.kind === 'comments';
+        } catch {
+            return false;
+        }
+    }
+
+    async function relaunchInstagram(): Promise<void> {
+        console.log('Relaunching Instagram to reset to Reels');
+        recoveries += 1;
+        try {
+            await driver!.terminateApp(instagramBundleId);
         } catch (error) {
-            likeX = seedLike.x;
-            likeY = seedLike.y;
-            saveX = seedSave.x;
-            saveY = seedSave.y;
+            console.log(`terminateApp: ${error instanceof Error ? error.message : String(error)}`);
+        }
+        await driver!.pause(900);
+        await driver!.activateApp(instagramBundleId);
+        await driver!.pause(3500);
+        for (let tryActivate = 1; tryActivate <= 3; tryActivate++) {
+            try {
+                const state = await driver!.queryAppState(instagramBundleId);
+                if (state === 4) break;
+                console.log(`Instagram not foreground (state=${state}); activate retry ${tryActivate}`);
+            } catch (error) {
+                console.log(`queryAppState: ${error instanceof Error ? error.message : String(error)}`);
+            }
+            await driver!.activateApp(instagramBundleId);
+            await driver!.pause(2500);
+        }
+        await tapCoordinate(driver!, reelsTabX, reelsTabY, 'Reels tab');
+        await driver!.pause(1400);
+    }
+
+    async function tapReelsTabOnly(): Promise<void> {
+        await tapCoordinate(driver!, reelsTabX, reelsTabY, 'Reels tab');
+        await driver!.pause(1100);
+    }
+
+    async function ensureReelsFeed(maxAttempts = 6): Promise<boolean> {
+        let softUnknownRetries = 0;
+        for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+            if (stopRequested) return false;
+            let screenshot: Buffer;
+            let scale: number;
+            try {
+                const [shot, screen] = await Promise.all([
+                    remoteControl.getScreenshot(udid),
+                    remoteControl.getScreenInfo(udid),
+                ]);
+                screenshot = shot;
+                scale = screen.scale;
+            } catch (error) {
+                console.log(`Identify screenshot failed: ${error instanceof Error ? error.message : String(error)}`);
+                await relaunchInstagram();
+                continue;
+            }
+
+            const identity = await identifyReelsScreen(screenshot, scale);
             console.log(
-                `Engagement refine failed; using seeds: ${error instanceof Error ? error.message : String(error)}`,
+                `Screen identity: kind=${identity.kind} confidence=${identity.confidence.toFixed(2)}`
+                + `${identity.reasons.length ? ` [${identity.reasons.join(', ')}]` : ''} attempt=${attempt}`,
             );
+
+            if (identity.kind === 'reels') {
+                softUnknownRetries = 0;
+                return true;
+            }
+
+            if (identity.kind === 'comments') {
+                console.log('Dismissing comment sheet');
+                await dismissCommentSheet(driver!, isCommentSheetOpen);
+                continue;
+            }
+
+            // Clear Home / Following — soft Reels tap, no full relaunch.
+            if (identity.kind === 'home' || identity.kind === 'following') {
+                console.log(`On ${identity.kind} — tapping Reels tab`);
+                softUnknownRetries = 0;
+                await tapReelsTabOnly();
+                continue;
+            }
+
+            if ((identity.kind === 'off_feed' || identity.kind === 'search') && softUnknownRetries < 1) {
+                softUnknownRetries += 1;
+                console.log(`Transient ${identity.kind} — wait/re-check before relaunch`);
+                await driver!.pause(900);
+                continue;
+            }
+
+            softUnknownRetries = 0;
+            await relaunchInstagram();
+        }
+        console.log('Could not recover to Reels feed after identify/relaunch attempts');
+        return false;
+    }
+
+    async function settleAfterEngage(): Promise<void> {
+        try {
+            const [shot, screen] = await Promise.all([
+                remoteControl.getScreenshot(udid),
+                remoteControl.getScreenInfo(udid),
+            ]);
+            const identity = await identifyReelsScreen(shot, screen.scale);
+            console.log(
+                `Post-engage identity: kind=${identity.kind} confidence=${identity.confidence.toFixed(2)}`
+                + `${identity.reasons.length ? ` [${identity.reasons.join(', ')}]` : ''}`,
+            );
+            if (identity.kind === 'reels') return;
+            if (identity.kind === 'comments') {
+                await dismissCommentSheet(driver!, isCommentSheetOpen);
+                return;
+            }
+            if (identity.kind === 'home' || identity.kind === 'following') {
+                await tapReelsTabOnly();
+                return;
+            }
+            console.log(`Post-engage settle deferred (${identity.kind})`);
+        } catch (error) {
+            console.log(`Post-engage settle skipped: ${error instanceof Error ? error.message : String(error)}`);
         }
     }
 
     const deadline = Date.now() + durationMinutes * 60_000;
 
     while (!stopRequested && hasTimeRemaining(Date.now(), deadline)) {
-        await cancellableDelay(clampToDeadline(Date.now(), deadline, pickWatchDurationMs(profile)));
+        const onReels = await ensureReelsFeed();
+        if (!onReels) {
+            await cancellableDelay(clampToDeadline(Date.now(), deadline, 1200));
+            continue;
+        }
+        if (stopRequested || !hasTimeRemaining(Date.now(), deadline)) break;
+
         videosViewed += 1;
+        await cancellableDelay(clampToDeadline(Date.now(), deadline, pickWatchDurationMs(profile)));
         if (stopRequested || !hasTimeRemaining(Date.now(), deadline)) break;
 
         const willLike = likeEnabled && decideLike(profile);
-        const willSave = saveEnabled && decideSave(profile);
-        if (willLike || willSave) {
-            await refineEngagementControls();
+        const willComment = commentEnabled && decideComment(profile);
+
+        if (willLike || willComment) {
+            try {
+                const [freshShot, screen] = await Promise.all([
+                    remoteControl.getScreenshot(udid),
+                    remoteControl.getScreenInfo(udid),
+                ]);
+                const identity = await identifyReelsScreen(freshShot, screen.scale);
+                console.log(
+                    `Pre-engage identity: kind=${identity.kind} confidence=${identity.confidence.toFixed(2)}`
+                    + `${identity.reasons.length ? ` [${identity.reasons.join(', ')}]` : ''}`,
+                );
+                if (identity.kind === 'search' || identity.kind === 'off_feed'
+                    || identity.kind === 'home' || identity.kind === 'following') {
+                    console.log(`Skipping engage; recovering from ${identity.kind}`);
+                    await ensureReelsFeed(2);
+                    continue;
+                }
+                if (identity.kind === 'comments') {
+                    console.log('Skipping engage; dismissing sheet');
+                    await dismissCommentSheet(driver!, isCommentSheetOpen);
+                    continue;
+                }
+                const detected = await detectEngagementControls(freshShot, screen.scale, {
+                    like: seedLike,
+                    save: seedSaveAnchor,
+                });
+                if (detected) applyDetectedEngagement(detected);
+                else {
+                    applyEngagementSeeds();
+                    console.log(
+                        `Could not refine Instagram like control; using seed like=(${likeX}, ${likeY})`,
+                    );
+                }
+            } catch (error) {
+                applyEngagementSeeds();
+                console.log(
+                    `Engagement refine failed; using seeds: ${error instanceof Error ? error.message : String(error)}`,
+                );
+            }
             if (stopRequested || !hasTimeRemaining(Date.now(), deadline)) break;
         }
 
         if (willLike) {
             await cancellableDelay(clampToDeadline(Date.now(), deadline, interactionPauseMs()));
             if (stopRequested || !hasTimeRemaining(Date.now(), deadline)) break;
-            // Single tap on the heart. Double-tapping likes then unlikes.
             await tapCoordinate(driver, likeX, likeY, 'Like');
             likes += 1;
             await cancellableDelay(clampToDeadline(Date.now(), deadline, engagementSettleMs()));
         }
         if (stopRequested || !hasTimeRemaining(Date.now(), deadline)) break;
 
-        if (willSave) {
+        if (willComment) {
             await cancellableDelay(clampToDeadline(Date.now(), deadline, interactionPauseMs()));
             if (stopRequested || !hasTimeRemaining(Date.now(), deadline)) break;
-            await tapCoordinate(driver, saveX, saveY, 'Save');
-            saves += 1;
+            await postComment(driver, commentText, isCommentSheetOpen);
+            comments += 1;
             await cancellableDelay(clampToDeadline(Date.now(), deadline, engagementSettleMs()));
+            await settleAfterEngage();
         }
         if (stopRequested || !hasTimeRemaining(Date.now(), deadline)) break;
 
@@ -289,30 +533,18 @@ try {
         }
         if (stopRequested || !hasTimeRemaining(Date.now(), deadline)) break;
 
-        await cancellableDelay(clampToDeadline(Date.now(), deadline, engagementSettleMs()));
-        if (stopRequested || !hasTimeRemaining(Date.now(), deadline)) break;
-
-        // Coordinate actions bypass XCTest's expensive application-element
-        // lookup, which can hang on Instagram's continuously updating feed.
-        await driver.performActions([{
-            type: 'pointer',
-            id: 'finger',
-            parameters: { pointerType: 'touch' },
-            actions: [
-                { type: 'pointerMove', duration: 0, x: swipeX, y: swipeStartY },
-                { type: 'pointerDown', button: 0 },
-                { type: 'pause', duration: 100 },
-                { type: 'pointerMove', duration: swipeDurationMs, x: swipeX, y: swipeEndY },
-                { type: 'pointerUp', button: 0 },
-            ],
-        }]);
-        await driver.releaseActions();
+        await swipeNext(driver);
         swipes += 1;
+        await cancellableDelay(clampToDeadline(Date.now(), deadline, 550 + Math.round(Math.random() * 250)));
     }
 
     const elapsedMs = Date.now() - runStartedAt;
     const reason = stopRequested ? 'stopped' : 'completed';
-    console.log(`Finished doomscroll: videosViewed=${videosViewed} swipes=${swipes} likes=${likes} saves=${saves} elapsedMs=${elapsedMs} reason=${reason}`);
+    console.log(
+        `Finished Instagram Reels doomscroll: videosViewed=${videosViewed} swipes=${swipes} likes=${likes}`
+        + ` comments=${comments} recoveries=${recoveries}`
+        + ` elapsedMs=${elapsedMs} reason=${reason}`,
+    );
 } finally {
     if (driver) {
         await driver.deleteSession();

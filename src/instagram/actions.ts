@@ -21,6 +21,103 @@ export async function tapCoordinate(driver: Browser, x: number, y: number, label
     console.log(`Tapped ${label} at (${x}, ${y})`);
 }
 
+/** Coach-mark / feed tutorial copy Instagram overlays on Home. */
+const FEED_TUTORIAL_HINTS = [
+    'skip',
+    'got it',
+    'gotit',
+    'double tap',
+    'doubletap',
+    'double-tap',
+    'press and hold',
+    'hold to record',
+    'try it',
+    'tryit',
+    'new feature',
+    "what's new",
+    'whats new',
+    'learn more',
+    'learnmore',
+    'not now',
+    'notnow',
+    'next tip',
+    'nexttip',
+    'tap here',
+    'taphere',
+    'tutorial',
+    'coach mark',
+    'coachmark',
+] as const;
+
+export function looksLikeFeedTutorial(words: OcrWord[]): boolean {
+    const joined = words.map((word) => word.text.toLowerCase()).join(' ');
+    const compact = words.map((word) => word.text.toLowerCase().replace(/[^a-z0-9]/g, '')).join(' ');
+    return FEED_TUTORIAL_HINTS.some((hint) => {
+        const spaced = hint.toLowerCase();
+        const mashed = spaced.replace(/\s+/g, '');
+        return joined.includes(spaced) || compact.includes(mashed);
+    });
+}
+
+/**
+ * Instagram sometimes drops a full-screen / center coach-mark on Home that
+ * eats the Create (+) tap. While OCR still looks like a tutorial, tap the
+ * middle of the screen until it clears (or we hit the attempt cap).
+ */
+export async function dismissFeedTutorials(
+    driver: Browser,
+    remote: WdaRemoteControl,
+    udid: string,
+    screenSize: { width: number; height: number },
+    options: { maxTaps?: number } = {},
+): Promise<void> {
+    const maxTaps = options.maxTaps ?? 6;
+    const midX = Math.round(screenSize.width / 2);
+    const midY = Math.round(screenSize.height / 2);
+
+    for (let attempt = 1; attempt <= maxTaps; attempt += 1) {
+        const words = await recognizeWords(await remote.getScreenshot(udid));
+        if (!looksLikeFeedTutorial(words)) {
+            if (attempt > 1) console.log('Feed tutorial overlay cleared');
+            return;
+        }
+        const hint = words.map((word) => word.text).filter(Boolean).slice(0, 12).join(', ');
+        console.log(`Feed tutorial detected (attempt ${attempt}/${maxTaps}); tapping screen center. OCR: ${hint || '(empty)'}`);
+        await tapCoordinate(driver, midX, midY, `Dismiss tutorial (center ${attempt})`);
+        await driver.pause(900);
+    }
+    console.warn(`Feed tutorial still present after ${maxTaps} center taps — continuing anyway`);
+}
+
+/**
+ * Insert preset text in one shot (configured in the doomscroll dialog).
+ * Tries pasteboard paste first, then Appium /keys with the full string —
+ * never soft-keyboard letter-by-letter typing.
+ */
+export async function typeText(driver: Browser, text: string): Promise<void> {
+    try {
+        await driver.execute('mobile: setPasteboard', { content: text, encoding: 'utf8' });
+        await driver.execute('mobile: paste');
+        console.log(`Pasted preset text (${text.length} chars)`);
+        return;
+    } catch (error) {
+        console.log(`Paste unavailable (${error instanceof Error ? error.message : String(error)}); injecting full string`);
+    }
+
+    const appiumHost = process.env.APPIUM_HOST ?? '127.0.0.1';
+    const appiumPort = Number.parseInt(process.env.APPIUM_PORT ?? '4725', 10);
+    if (!Number.isSafeInteger(appiumPort) || appiumPort <= 0) {
+        throw new Error(`APPIUM_PORT must be a positive integer; received ${process.env.APPIUM_PORT}`);
+    }
+    const response = await fetch(`http://${appiumHost}:${appiumPort}/session/${driver.sessionId}/keys`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ value: [text] }),
+    });
+    if (!response.ok) throw new Error(`Appium could not insert text: ${await response.text()}`);
+    console.log(`Inserted preset text (${text.length} chars)`);
+}
+
 export interface AccountSwitchCoords {
     profileTabX: number;
     profileTabY: number;

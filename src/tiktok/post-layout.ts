@@ -11,18 +11,20 @@ export interface PickerTarget {
     y: number;
 }
 
+/**
+ * Photos Recents (and TikTok's upload grid) is newest-first.
+ * After WDA import-media, the just-imported items occupy cells 0..count-1
+ * at the top of the grid — not the end of the library.
+ */
 export function recentPickerTargets(assetCount: number, count: number, layout: PickerLayout): PickerTarget[] {
     if (!Number.isSafeInteger(assetCount) || assetCount < count || count < 1) {
         throw new Error('Photos asset count cannot satisfy the requested media selection');
     }
-    const latestIndex = assetCount - 1;
-    const latestRow = Math.floor(latestIndex / 3);
     return Array.from({ length: count }, (_, selection) => {
-        const assetIndex = latestIndex - selection;
-        const rowDifference = latestRow - Math.floor(assetIndex / 3);
+        const row = Math.floor(selection / 3);
         return {
-            x: layout.circleX + ((assetIndex % 3) * layout.columnStep),
-            y: selection === 0 ? layout.firstY : layout.trayY - (rowDifference * layout.rowStep),
+            x: layout.circleX + ((selection % 3) * layout.columnStep),
+            y: layout.firstY + (row * layout.rowStep),
         };
     });
 }

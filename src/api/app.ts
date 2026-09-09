@@ -123,8 +123,8 @@ function page(title: string, body: string, logoutPath?: string, navLinks: readon
     const extra = navLinks.map((link) => `<a href="${escapeHtml(link.href)}">${escapeHtml(link.label)}</a>`).join('');
     return `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>${escapeHtml(title)}</title><style>
-body{font:15px system-ui,sans-serif;margin:0;background:#f6f7f9;color:#17202a}nav{padding:16px 24px;background:#111827;color:white}nav a{color:white;margin-right:18px}main{max-width:1100px;margin:24px auto;padding:0 20px}.card{background:white;border:1px solid #dde2e8;border-radius:10px;padding:18px;margin:14px 0}table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:9px;border-bottom:1px solid #e5e7eb}code{font-size:12px}.muted{color:#64748b}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px}button,.button{background:#2563eb;color:white;border:0;border-radius:6px;padding:8px 12px;text-decoration:none;cursor:pointer}input,select,textarea{padding:8px;border:1px solid #cbd5e1;border-radius:6px}</style></head>
-<body><nav><a href="/">Devices</a><a href="/tasks">Tasks</a><a href="/docs">API</a>${extra}${logout}</nav><main>${body}</main><footer style="max-width:1100px;margin:24px auto;padding:16px 20px;color:#94a3b8;font-size:12px">${FOOTER_HTML}</footer></body></html>`;
+:root{color-scheme:dark}body{font:15px Outfit,system-ui,sans-serif;margin:0;background:#000;color:#f7f7f8}nav{display:flex;flex-wrap:wrap;gap:14px;align-items:center;padding:14px 24px;background:#0c0c0e;border-bottom:1px solid rgb(255 255 255 / 10%)}nav a{color:#f7f7f8;text-decoration:none;font-weight:650}main{max-width:1100px;margin:24px auto;padding:0 20px}.card{background:#0c0c0e;border:1px solid rgb(255 255 255 / 10%);border-radius:14px;padding:18px;margin:14px 0}table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:9px;border-bottom:1px solid rgb(255 255 255 / 8%)}code{font-size:12px}.muted{color:#8a8a93}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px}button,.button{background:linear-gradient(105deg,#ff4b2b,#ff416c);color:white;border:0;border-radius:999px;padding:8px 14px;text-decoration:none;cursor:pointer;font-weight:700}input,select,textarea{padding:8px;border:1px solid rgb(255 255 255 / 14%);border-radius:10px;background:#070708;color:#f7f7f8}</style></head>
+<body><nav><a href="/">Devices</a><a href="/tasks">Tasks</a><a href="/docs">API</a>${extra}${logout}</nav><main>${body}</main><footer style="max-width:1100px;margin:24px auto;padding:16px 20px;color:#5c5c66;font-size:12px">${FOOTER_HTML}</footer></body></html>`;
 }
 
 async function registeredWithStatus() {
@@ -368,16 +368,24 @@ export async function createApp(options: CreateAppOptions): Promise<FastifyInsta
                 // passcode: a value sets it, '' clears it, omitting it leaves it
                 if (passcode === '') delete device.passcode;
                 else if (passcode !== undefined) device.passcode = passcode;
-                // coordinates: the object replaces the whole override map; {} clears it
+                // coordinates / instagramCoordinates: merge into the existing
+                // override map so a TikTok save never clobbers Instagram (and
+                // vice versa). Send {} to clear that app's overrides.
                 if (coordinates !== undefined) {
-                    const overrides = validateCoordinateOverrides(coordinates, device.coordinateProfile);
-                    if (Object.keys(overrides).length === 0) delete device.coordinates;
-                    else device.coordinates = overrides;
+                    const incoming = validateCoordinateOverrides(coordinates, device.coordinateProfile);
+                    if (Object.keys(coordinates as object).length === 0) {
+                        delete device.coordinates;
+                    } else {
+                        device.coordinates = { ...device.coordinates, ...incoming };
+                    }
                 }
                 if (instagramCoordinates !== undefined) {
-                    const overrides = validateCoordinateOverrides(instagramCoordinates, device.coordinateProfile);
-                    if (Object.keys(overrides).length === 0) delete device.instagramCoordinates;
-                    else device.instagramCoordinates = overrides;
+                    const incoming = validateCoordinateOverrides(instagramCoordinates, device.coordinateProfile);
+                    if (Object.keys(instagramCoordinates as object).length === 0) {
+                        delete device.instagramCoordinates;
+                    } else {
+                        device.instagramCoordinates = { ...device.instagramCoordinates, ...incoming };
+                    }
                 }
                 return device;
             });

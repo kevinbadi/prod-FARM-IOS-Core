@@ -6,7 +6,7 @@ import { loadRegisteredDevices, resolveDeviceCoordinates, WdaRemoteControl } fro
 import type { PostManifest } from './post-manifest.js';
 import { type TikTokCoordinates } from './coordinates.js';
 import { coordinateProfile, registeredAccounts } from './runtime-settings.js';
-import { switchTikTokAccount, tapCoordinate } from './actions.js';
+import { switchTikTokAccount, tapCoordinate, dismissFeedTutorials } from './actions.js';
 import { recentPickerTargets } from './post-layout.js';
 import { isRedCheckboxChecked } from './pixel.js';
 
@@ -42,6 +42,8 @@ async function importMedia(manifest: PostManifest): Promise<number> {
         assetCount = result.value?.assetCount ?? 0;
     }
     if (!assetCount) throw new Error('WDA did not return the Photos asset count');
+    // Give Photos a beat to surface the import at the front of Recents.
+    await new Promise((resolve) => setTimeout(resolve, 1500));
     return assetCount;
 }
 
@@ -62,7 +64,10 @@ async function clickOne(driver: Browser, label: string, selectors: string[]): Pr
 
 async function openComposer(
     driver: Browser,
+    remote: WdaRemoteControl,
+    udid: string,
     coordinates: TikTokCoordinates['tiktok'],
+    screenSize: { width: number; height: number },
     musicUrl?: string,
 ): Promise<void> {
     if (musicUrl) {
@@ -75,8 +80,18 @@ async function openComposer(
     } else {
         await driver.activateApp(process.env.TIKTOK_BUNDLE_ID ?? 'com.zhiliaoapp.musically');
         await driver.pause(2500);
-        // TikTok's live feed can make accessibility queries hang. The center
-        // bottom navigation button is stable on the configured device layout.
+        // Create (+) only lives on the Home tab chrome. Account-switch attempts
+        // (or a cold launch onto Profile/Inbox) leave us off Home — retap first.
+        await tapCoordinate(
+            driver,
+            coordinates.homeTab.x,
+            coordinates.homeTab.y,
+            'Home tab',
+        );
+        await driver.pause(1200);
+        // FYP coach-marks / tutorials sit on top of Home and steal the Create tap.
+        await dismissFeedTutorials(driver, remote, udid, screenSize);
+        console.log(`Opening Create (+) at (${coordinates.create.x}, ${coordinates.create.y})`);
         await tapCoordinate(
             driver,
             coordinates.create.x,
@@ -122,7 +137,6 @@ async function chooseRecentMedia(
     driver: Browser, remote: WdaRemoteControl, udid: string, count: number, assetCount: number,
     coordinates: TikTokCoordinates['tiktok'],
 ): Promise<void> {
-    const latestIndex = assetCount - 1;
     if (count > 1) {
         await ensureCheckboxState(driver, remote, udid, {
             x: coordinates.selectMultiple.x,
@@ -144,9 +158,12 @@ async function chooseRecentMedia(
             y: coordinates.useLayout.y,
         }, 'Use layout', false);
     } else {
-        const column = latestIndex % 3;
-        const x = coordinates.picker.cellX + (column * coordinates.picker.cellStep);
-        await tapCoordinate(driver, x, coordinates.picker.cellY, 'media 1/1');
+        // Newest-first Recents: the just-imported file is always the top-left cell.
+        console.log(
+            `Selecting newest import at (${coordinates.picker.cellX}, ${coordinates.picker.cellY}) `
+            + `(library assetCount=${assetCount})`,
+        );
+        await tapCoordinate(driver, coordinates.picker.cellX, coordinates.picker.cellY, 'media 1/1');
         await driver.pause(1000);
     }
     await tapCoordinate(driver, coordinates.pickerNext.x, coordinates.pickerNext.y, 'picker Next');
@@ -236,9 +253,18 @@ for (let attempt = 1; attempt <= REACH_CAPTION_SCREEN_ATTEMPTS && !reachedCaptio
         if (switchAccountName) {
             console.log(`Switching to TikTok account "${switchAccountName}"`);
             await driver.pause(2000);
-            await switchTikTokAccount(driver, deviceRemote, manifest.device.udid, switchAccountName, accountSwitchCoords);
+            try {
+                await switchTikTokAccount(driver, deviceRemote, manifest.device.udid, switchAccountName, accountSwitchCoords);
+            } catch (error) {
+                // Profile/switcher coords are often uncalibrated; blocking Create
+                // here aborts the whole draft. Continue on the already-open account.
+                console.warn(
+                    `Account switch skipped (${error instanceof Error ? error.message : String(error)}). `
+                    + 'Continuing with the currently signed-in TikTok account.',
+                );
+            }
         }
-        await openComposer(driver, tiktokCoordinates, manifest.musicUrl);
+        await openComposer(driver, deviceRemote, manifest.device.udid, tiktokCoordinates, coordinates.screenSize, manifest.musicUrl);
         await chooseRecentMedia(driver, deviceRemote, manifest.device.udid, manifest.files.length, assetCount, tiktokCoordinates);
         reachedCaptionScreen = true;
     } catch (error) {

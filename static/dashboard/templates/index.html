@@ -3,26 +3,32 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>iOS Automation · Handler</title>
+    <title>Devices · IOS AGENTS</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Syne:wght@600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/assets/styles.css">
     <script src="/assets/htmx.min.js" defer></script>
 </head>
 <body>
     <header class="topbar">
         <div class="topbar-inner">
-            <div class="brand">
-                <a class="brand-name" href="/">IOS AGENTS</a>
-                <span class="brand-by">by kevbuilds apps</span>
-            </div>
+            <a class="brand" href="/">
+                <span class="brand-mark" aria-hidden="true"></span>
+                <span class="brand-text">
+                    <span class="brand-name">IOS AGENTS</span>
+                    <span class="brand-by">by kevbuilds apps</span>
+                </span>
+            </a>
             <nav class="topbar-nav"><a class="button primary" href="/devices/register">Register device</a><a class="button secondary" href="/tasks">Tasks</a><button class="button secondary" type="button" hx-get="/api/fragments/devices" hx-target="#device-list" hx-swap="outerHTML">Refresh</button>__PLUGIN_NAV____AUTH_NAV__</nav>
         </div>
     </header>
     <main class="shell">
         <header class="page-header">
             <div>
-                <span class="eyebrow">Automation workspace</span>
-                <h1>Devices</h1>
-                <p>Choose a connected iPhone to control it or run automation.</p>
+                <span class="eyebrow">Fleet control</span>
+                <h1>Your <em>devices</em></h1>
+                <p>Pick a connected iPhone to drive it live or queue automation.</p>
             </div>
         </header>
         <section id="device-list" class="device-list" hx-get="/api/fragments/devices" hx-trigger="load" hx-swap="outerHTML" aria-live="polite">

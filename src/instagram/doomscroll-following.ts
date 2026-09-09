@@ -2,16 +2,15 @@ import { remote, type Browser } from 'webdriverio';
 
 import { loadRegisteredDevices, resolveDeviceCoordinates, WdaRemoteControl } from '@git-agni/phone-farm-core';
 import { coordinateProfile, registeredAccounts } from './runtime-settings.js';
-import { switchTikTokAccount, tapCoordinate, typeText } from './actions.js';
+import { switchInstagramAccount, tapCoordinate, typeText } from './actions.js';
 import { detectEngagementControls } from './engagement-controls.js';
-import { detectTikTokCarousel, identifyTikTokScreen } from './screen-identity.js';
+import { identifyInstagramScreen } from './screen-identity.js';
 import {
     PROFILES,
     clampToDeadline,
     decideComment,
     decideLike,
     decideLinger,
-    decideSave,
     hasTimeRemaining,
     isPersonality,
     pickWatchDurationMs,
@@ -57,61 +56,55 @@ const profile = PROFILES[personality];
 
 const durationMinutes = boundedInteger('DOOMSCROLL_DURATION_MINUTES', 5, 1, 180);
 const likeEnabled = booleanEnv('DOOMSCROLL_LIKE_ENABLED', true);
-const saveEnabled = booleanEnv('DOOMSCROLL_SAVE_ENABLED', true);
 const commentEnabled = booleanEnv('DOOMSCROLL_COMMENT_ENABLED', false);
 const commentText = (process.env.DOOMSCROLL_COMMENT_TEXT ?? '').trim();
 if (commentEnabled && !commentText) {
     throw new Error('DOOMSCROLL_COMMENT_TEXT is required when DOOMSCROLL_COMMENT_ENABLED=true');
 }
-const switchAccountName = process.env.TIKTOK_SWITCH_ACCOUNT?.trim() || undefined;
+const switchAccountName = process.env.INSTAGRAM_SWITCH_ACCOUNT?.trim() || undefined;
 const registeredDevice = (await loadRegisteredDevices()).find((device) => device.udid === udid);
-const coordinates = resolveDeviceCoordinates(coordinateProfile(registeredDevice), registeredDevice?.coordinates);
-const tiktokCoordinates = coordinates.tiktok;
+const coordinates = resolveDeviceCoordinates(
+    coordinateProfile(registeredDevice),
+    registeredDevice?.instagramCoordinates,
+    'instagram',
+);
+const instagramCoordinates = coordinates.instagram;
 const accountSwitchCoords = {
-    profileTabX: tiktokCoordinates.profileTab.x,
-    profileTabY: tiktokCoordinates.profileTab.y,
-    switcherTriggerX: tiktokCoordinates.accountSwitcher.x,
-    switcherTriggerY: tiktokCoordinates.accountSwitcher.y,
+    profileTabX: instagramCoordinates.profileTab.x,
+    profileTabY: instagramCoordinates.profileTab.y,
+    switcherTriggerX: instagramCoordinates.accountSwitcher.x,
+    switcherTriggerY: instagramCoordinates.accountSwitcher.y,
 };
-// switchTikTokAccount ends on the Profile tab (it re-checks there to verify
-// the switch). The scroll loop below expects the Home / For You feed.
-const { x: homeTabX, y: homeTabY } = tiktokCoordinates.homeTab;
-const forYouTabX = Math.round(coordinates.screenSize.width * 0.62);
-const forYouTabY = tiktokCoordinates.followingTab.y;
+const { x: reelsTabX, y: reelsTabY } = instagramCoordinates.reelsTab;
+const { x: followingTabX, y: followingTabY } = instagramCoordinates.followingTab;
 
-// Fail fast, before unlocking or launching TikTok, if the requested account
-// isn't one this device is registered for.
 const allowedAccounts = switchAccountName
     ? registeredAccounts(registeredDevice)
     : [];
 if (switchAccountName && !allowedAccounts.includes(switchAccountName)) {
-    throw new Error(`TikTok account "${switchAccountName}" is not listed in devices.json for device ${udid}`);
+    throw new Error(`Instagram account "${switchAccountName}" is not listed in devices.json for device ${udid}`);
 }
-let { x: likeX, y: likeY } = tiktokCoordinates.like;
-let { x: saveX, y: saveY } = tiktokCoordinates.save;
-const { x: commentX, y: commentY } = tiktokCoordinates.comment;
-const { x: commentComposerX, y: commentComposerY } = tiktokCoordinates.commentComposer;
-const { x: commentSendX, y: commentSendY } = tiktokCoordinates.commentSend;
-const { x: swipeX, startY: swipeStartY, endY: swipeEndY, durationMs: swipeDurationMs } = tiktokCoordinates.swipe;
-// Keep next-video swipes in the left third so micro X jitter does not advance
-// photo carousels sideways. Same X locked for the whole gesture.
-const swipeAxisX = Math.round(coordinates.screenSize.width * 0.32);
+let { x: likeX, y: likeY } = instagramCoordinates.like;
+const { x: commentX, y: commentY } = instagramCoordinates.comment;
+const { x: commentComposerX, y: commentComposerY } = instagramCoordinates.commentComposer;
+const { x: commentSendX, y: commentSendY } = instagramCoordinates.commentSend;
+const { startY: swipeStartY, endY: swipeEndY, durationMs: swipeDurationMs } = instagramCoordinates.swipe;
+// Left-of-center vertical flick avoids the Reels engagement rail.
+const swipeAxisX = Math.round(coordinates.screenSize.width * 0.38);
 const wdaUrl = process.env.WDA_URL;
-const tiktokBundleId = process.env.TIKTOK_BUNDLE_ID ?? 'com.zhiliaoapp.musically';
+const instagramBundleId = process.env.INSTAGRAM_BUNDLE_ID ?? 'com.burbn.instagram';
 
 const capabilities: WebdriverIO.Capabilities & Record<string, unknown> = {
     platformName: 'iOS',
     'appium:automationName': 'XCUITest',
     'appium:udid': udid,
-    'appium:bundleId': tiktokBundleId,
+    'appium:bundleId': instagramBundleId,
     'appium:noReset': true,
     'appium:forceAppLaunch': true,
     'appium:shouldTerminateApp': true,
     'appium:newCommandTimeout': 120,
     'appium:wdaLaunchTimeout': 120000,
     'appium:wdaConnectionTimeout': 120000,
-    // TikTok's video feed never becomes fully idle. Waiting for quiescence can
-    // make otherwise-completed gestures block until the WDA proxy times out.
     'appium:waitForIdleTimeout': 0,
     'appium:showXcodeLog': process.env.SHOW_XCODE_LOG === 'true',
 };
@@ -134,9 +127,6 @@ if (!wdaUrl && process.env.WDA_BOOTSTRAP_PATH) {
     capabilities['appium:bootstrapPath'] = process.env.WDA_BOOTSTRAP_PATH;
 }
 
-// Cooperative cancellation: a Stop request sends SIGTERM (see
-// src/automations/runner.ts). Every wait below races against stopPromise so
-// a stop interrupts immediately instead of waiting out the current sleep.
 let stopRequested = false;
 let resolveStop: () => void = () => {};
 const stopPromise = new Promise<void>((resolve) => { resolveStop = resolve; });
@@ -162,7 +152,6 @@ function interactionPauseMs(): number {
     return Math.round(350 + Math.random() * 450);
 }
 
-/** Longer settle so TikTok can finish heart/bookmark animations before the next tap or swipe. */
 function engagementSettleMs(): number {
     return Math.round(750 + Math.random() * 850);
 }
@@ -171,50 +160,53 @@ let driver: Browser | undefined;
 let videosViewed = 0;
 let swipes = 0;
 let likes = 0;
-let saves = 0;
 let comments = 0;
-let livesSkipped = 0;
 let recoveries = 0;
-let liveSwipeAttempts = 0;
 const runStartedAt = Date.now();
 
 console.log(
-    `Starting doomscroll: profile=${personality} requestedDurationMinutes=${durationMinutes}`
-    + ` likeEnabled=${likeEnabled} saveEnabled=${saveEnabled} commentEnabled=${commentEnabled}`,
+    `Starting Instagram engage following: profile=${personality} requestedDurationMinutes=${durationMinutes}`
+    + ` likeEnabled=${likeEnabled} commentEnabled=${commentEnabled}`,
 );
 
 async function dismissCommentSheet(
-    driver: Browser,
+    browser: Browser,
     isStillOpen?: () => Promise<boolean>,
 ): Promise<void> {
     const width = coordinates.screenSize.width;
     const height = coordinates.screenSize.height;
-    // Tap the exposed video above the sheet. Do NOT drag-down unconditionally —
-    // once the sheet is gone that gesture reverses the FYP (previous video) and
-    // fights swipeNext (next video), causing up/down oscillation.
+    // Instagram Reels comment sheet: X / dismiss first so scroll can continue.
     await tapCoordinate(
-        driver,
-        Math.round(width * 0.42),
-        Math.round(height * 0.16),
-        'Video above comments',
+        browser,
+        Math.round(width * 0.92),
+        Math.round(height * 0.30),
+        'Comment dismiss',
     );
-    await driver.pause(550);
+    await browser.pause(600);
     if (!isStillOpen || !(await isStillOpen())) return;
 
     await tapCoordinate(
-        driver,
-        Math.round(width * 0.92),
-        Math.round(height * 0.33),
-        'Comment sheet close',
+        browser,
+        Math.round(width * 0.5),
+        Math.round(height * 0.14),
+        'Above comments sheet',
     );
-    await driver.pause(550);
+    await browser.pause(550);
     if (!(await isStillOpen())) return;
 
-    // Only drag the sheet itself while it is still open.
+    await tapCoordinate(
+        browser,
+        Math.round(width * 0.92),
+        Math.round(height * 0.24),
+        'Comment dismiss retry',
+    );
+    await browser.pause(550);
+    if (!(await isStillOpen())) return;
+
     const grabX = Math.round(width * 0.5);
     const grabY = Math.round(height * 0.36);
     console.log('Comment sheet still open — dragging it closed');
-    await driver.performActions([{
+    await browser.performActions([{
         type: 'pointer',
         id: 'finger',
         parameters: { pointerType: 'touch' },
@@ -226,34 +218,32 @@ async function dismissCommentSheet(
             { type: 'pointerUp', button: 0 },
         ],
     }]);
-    await driver.releaseActions();
-    await driver.pause(500);
+    await browser.releaseActions();
+    await browser.pause(500);
 }
 
 async function postComment(
-    driver: Browser,
+    browser: Browser,
     text: string,
     isCommentSheetOpen?: () => Promise<boolean>,
 ): Promise<void> {
-    await tapCoordinate(driver, commentX, commentY, 'Comment');
-    await driver.pause(800);
-    await tapCoordinate(driver, commentComposerX, commentComposerY, 'Comment composer');
-    await driver.pause(400);
-    await typeText(driver, text);
-    await driver.pause(300);
-    await tapCoordinate(driver, commentSendX, commentSendY, 'Comment send');
-    await driver.pause(900);
-    console.log('Dismissing comment sheet after send');
-    await dismissCommentSheet(driver, isCommentSheetOpen);
+    await tapCoordinate(browser, commentX, commentY, 'Comment');
+    await browser.pause(800);
+    await tapCoordinate(browser, commentComposerX, commentComposerY, 'Comment composer');
+    await browser.pause(400);
+    await typeText(browser, text);
+    await browser.pause(300);
+    await tapCoordinate(browser, commentSendX, commentSendY, 'Comment send');
+    await browser.pause(900);
+    console.log('Dismissing comment sheet after send (dismiss button then fallbacks)');
+    await dismissCommentSheet(browser, isCommentSheetOpen);
 }
 
-async function swipeNext(driver: Browser): Promise<void> {
-    // Pure vertical flick: identical X throughout. Left-of-center axis avoids
-    // the engagement rail and reduces accidental carousel page-turns.
+async function swipeNext(browser: Browser): Promise<void> {
     const startY = Math.max(swipeStartY, Math.round(coordinates.screenSize.height * 0.72));
     const endY = Math.min(swipeEndY, Math.round(coordinates.screenSize.height * 0.22));
-    const duration = Math.min(swipeDurationMs, 380);
-    await driver.performActions([{
+    const duration = Math.min(swipeDurationMs, 420);
+    await browser.performActions([{
         type: 'pointer',
         id: 'finger',
         parameters: { pointerType: 'touch' },
@@ -265,7 +255,7 @@ async function swipeNext(driver: Browser): Promise<void> {
             { type: 'pointerUp', button: 0 },
         ],
     }]);
-    await driver.releaseActions();
+    await browser.releaseActions();
 }
 
 try {
@@ -277,7 +267,7 @@ try {
     console.log('Checking device lock state');
     await remoteControl.unlock(udid);
 
-    console.log(`Opening TikTok on ${udid}`);
+    console.log(`Opening Instagram on ${udid}`);
     driver = await remote({
         hostname: process.env.APPIUM_HOST ?? '127.0.0.1',
         port: positiveInteger('APPIUM_PORT', 4725),
@@ -288,46 +278,51 @@ try {
         capabilities,
     });
 
-    await driver.updateSettings({ defaultActiveApplication: tiktokBundleId });
+    await driver.updateSettings({ defaultActiveApplication: instagramBundleId });
     await driver.pause(3000);
 
     if (switchAccountName) {
-        console.log(`Switching to TikTok account "${switchAccountName}"`);
-        await switchTikTokAccount(driver, remoteControl, udid, switchAccountName, accountSwitchCoords);
-        // switchTikTokAccount leaves the app on the Profile tab; the loop
-        // below expects the Home feed.
-        await tapCoordinate(driver, homeTabX, homeTabY, 'Home tab');
-        await driver.pause(1500);
+        console.log(`Switching to Instagram account "${switchAccountName}"`);
+        await switchInstagramAccount(driver, remoteControl, udid, switchAccountName, accountSwitchCoords);
     }
 
-    // Seeds from profile + optional dashboard calibration. Each FYP video
-    // re-detects near these points so rail drift does not hit the LIVE avatar.
+    // Always land on Reels → Following (friends) before the agentic loop.
+    await tapCoordinate(driver, reelsTabX, reelsTabY, 'Reels tab');
+    await driver.pause(1400);
+    await tapCoordinate(driver, followingTabX, followingTabY, 'Following tab');
+    await driver.pause(1500);
+
     const seedLike = { x: likeX, y: likeY };
-    const seedSave = { x: saveX, y: saveY };
+    // Engagement refine still expects a paired save seed; Reels has no save tap.
+    const seedSaveAnchor = { x: likeX, y: Math.min(likeY + 170, coordinates.screenSize.height - 80) };
     console.log(
-        `TikTok engagement seeds: like=(${seedLike.x}, ${seedLike.y}) save=(${seedSave.x}, ${seedSave.y})`
+        `Instagram engage following seeds: like=(${seedLike.x}, ${seedLike.y})`
+            + ` comment=(${commentX}, ${commentY}) reelsTab=(${reelsTabX}, ${reelsTabY})`
+            + ` followingTab=(${followingTabX}, ${followingTabY})`
             + ` profile=${coordinateProfile(registeredDevice)}`
-            + `${registeredDevice?.coordinates?.like || registeredDevice?.coordinates?.save ? ' (calibrated)' : ''}`,
+            + `${registeredDevice?.instagramCoordinates?.like || registeredDevice?.instagramCoordinates?.followingTab || registeredDevice?.instagramCoordinates?.reelsTab ? ' (calibrated)' : ''}`,
     );
 
     function applyEngagementSeeds(): void {
         likeX = seedLike.x;
         likeY = seedLike.y;
-        saveX = seedSave.x;
-        saveY = seedSave.y;
     }
 
     function applyDetectedEngagement(detected: { like: { x: number; y: number }; save: { x: number; y: number }; confidence: number }): void {
         ({ x: likeX, y: likeY } = detected.like);
-        ({ x: saveX, y: saveY } = detected.save);
         seedLike.x = likeX;
         seedLike.y = likeY;
-        seedSave.x = saveX;
-        seedSave.y = saveY;
         console.log(
-            `Refined TikTok engagement controls: like=(${likeX}, ${likeY}) save=(${saveX}, ${saveY})`
+            `Refined Instagram like control: like=(${likeX}, ${likeY})`
                 + ` confidence=${detected.confidence.toFixed(3)}`,
         );
+    }
+
+    async function identifyFriendsScreen(screenshot: Buffer, scale: number) {
+        return identifyInstagramScreen(screenshot, scale, {
+            like: seedLike,
+            save: seedSaveAnchor,
+        }, { preferredFeed: 'following' });
     }
 
     async function isCommentSheetOpen(): Promise<boolean> {
@@ -336,47 +331,54 @@ try {
                 remoteControl.getScreenshot(udid),
                 remoteControl.getScreenInfo(udid),
             ]);
-            const identity = await identifyTikTokScreen(shot, screen.scale, {
-                like: seedLike,
-                save: seedSave,
-            }, { preferredFeed: 'forYou' });
+            const identity = await identifyFriendsScreen(shot, screen.scale);
             return identity.kind === 'comments';
         } catch {
             return false;
         }
     }
 
-    /**
-     * Screenshot → classify → recover until we are on FYP.
-     * Off-FYP recovery relaunches TikTok — chasing Live X is brittle because
-     * that same top-right slot becomes Search on the For You feed.
-     */
-    async function relaunchTikTok(): Promise<void> {
-        console.log('Relaunching TikTok to reset to For You');
+    async function relaunchInstagram(): Promise<void> {
+        console.log('Relaunching Instagram to reset to Reels → Following');
         recoveries += 1;
         try {
-            await driver!.terminateApp(tiktokBundleId);
+            await driver!.terminateApp(instagramBundleId);
         } catch (error) {
             console.log(`terminateApp: ${error instanceof Error ? error.message : String(error)}`);
         }
         await driver!.pause(900);
-        await driver!.activateApp(tiktokBundleId);
+        await driver!.activateApp(instagramBundleId);
         await driver!.pause(3500);
-        // After a popup/terminate we can land on SpringBoard if activate races.
         for (let tryActivate = 1; tryActivate <= 3; tryActivate++) {
             try {
-                const state = await driver!.queryAppState(tiktokBundleId);
+                const state = await driver!.queryAppState(instagramBundleId);
                 if (state === 4) break;
-                console.log(`TikTok not foreground (state=${state}); activate retry ${tryActivate}`);
+                console.log(`Instagram not foreground (state=${state}); activate retry ${tryActivate}`);
             } catch (error) {
                 console.log(`queryAppState: ${error instanceof Error ? error.message : String(error)}`);
             }
-            await driver!.activateApp(tiktokBundleId);
+            await driver!.activateApp(instagramBundleId);
             await driver!.pause(2500);
         }
+        await tapCoordinate(driver!, reelsTabX, reelsTabY, 'Reels tab');
+        await driver!.pause(1200);
+        await tapCoordinate(driver!, followingTabX, followingTabY, 'Following tab');
+        await driver!.pause(1400);
     }
 
-    async function ensureForYouFeed(maxAttempts = 6): Promise<boolean> {
+    async function tapFollowingTabOnly(): Promise<void> {
+        await tapCoordinate(driver!, followingTabX, followingTabY, 'Following tab');
+        await driver!.pause(1100);
+    }
+
+    async function retapReelsThenFollowing(): Promise<void> {
+        await tapCoordinate(driver!, reelsTabX, reelsTabY, 'Reels tab');
+        await driver!.pause(1200);
+        await tapCoordinate(driver!, followingTabX, followingTabY, 'Following tab');
+        await driver!.pause(1200);
+    }
+
+    async function ensureFriendsFeed(maxAttempts = 6): Promise<boolean> {
         let softUnknownRetries = 0;
         for (let attempt = 1; attempt <= maxAttempts; attempt++) {
             if (stopRequested) return false;
@@ -391,56 +393,38 @@ try {
                 scale = screen.scale;
             } catch (error) {
                 console.log(`Identify screenshot failed: ${error instanceof Error ? error.message : String(error)}`);
-                await relaunchTikTok();
+                await relaunchInstagram();
                 continue;
             }
 
-            const identity = await identifyTikTokScreen(screenshot, scale, {
-                like: seedLike,
-                save: seedSave,
-            }, { preferredFeed: 'forYou' });
+            const identity = await identifyFriendsScreen(screenshot, scale);
             console.log(
                 `Screen identity: kind=${identity.kind} confidence=${identity.confidence.toFixed(2)}`
                 + `${identity.reasons.length ? ` [${identity.reasons.join(', ')}]` : ''} attempt=${attempt}`,
             );
 
-            if (identity.kind === 'fyp') {
-                liveSwipeAttempts = 0;
+            if (identity.kind === 'following') {
                 softUnknownRetries = 0;
                 return true;
             }
 
-            // Comment / collections sheets are cheap to dismiss without a full relaunch.
             if (identity.kind === 'comments') {
-                console.log('Dismissing comment/collections sheet');
+                console.log('Dismissing comment sheet');
                 await dismissCommentSheet(driver!, isCommentSheetOpen);
                 continue;
             }
 
-            // Live: swipe past first (cheap). Only relaunch if we stay on Live.
-            if (identity.kind === 'live') {
-                if (liveSwipeAttempts === 0) livesSkipped += 1;
-                if (liveSwipeAttempts < 2) {
-                    liveSwipeAttempts += 1;
-                    console.log(`Live detected — swipe past attempt ${liveSwipeAttempts}/2`);
-                    await swipeNext(driver!);
-                    swipes += 1;
-                    await driver!.pause(900);
-                    continue;
+            // Reels For You / Home For You — soft Following; if stuck, Reels → Following again.
+            if (identity.kind === 'home' || identity.kind === 'reels') {
+                softUnknownRetries += 1;
+                if (softUnknownRetries >= 2) {
+                    console.log(`On ${identity.kind} — re-open Reels then Following`);
+                    softUnknownRetries = 0;
+                    await retapReelsThenFollowing();
+                } else {
+                    console.log(`On ${identity.kind} — tapping Following tab`);
+                    await tapFollowingTabOnly();
                 }
-                console.log('Still on Live after swipe attempts — relaunching TikTok');
-                liveSwipeAttempts = 0;
-                await relaunchTikTok();
-                continue;
-            }
-
-            // Clear Following only — tap For You without a full relaunch.
-            if (identity.kind === 'following' && identity.reasons.includes('followingTabSelected')) {
-                console.log('On Following — switching to For You tab');
-                liveSwipeAttempts = 0;
-                softUnknownRetries = 0;
-                await tapCoordinate(driver!, forYouTabX, forYouTabY, 'For You tab');
-                await driver!.pause(1200);
                 continue;
             }
 
@@ -451,12 +435,10 @@ try {
                 continue;
             }
 
-            liveSwipeAttempts = 0;
             softUnknownRetries = 0;
-            // Search / SpringBoard / unrecognized — kill and reopen onto Home/FYP.
-            await relaunchTikTok();
+            await relaunchInstagram();
         }
-        console.log('Could not recover to For You feed after identify/relaunch attempts');
+        console.log('Could not recover to Reels Following after identify/relaunch attempts');
         return false;
     }
 
@@ -466,22 +448,18 @@ try {
                 remoteControl.getScreenshot(udid),
                 remoteControl.getScreenInfo(udid),
             ]);
-            const identity = await identifyTikTokScreen(shot, screen.scale, {
-                like: seedLike,
-                save: seedSave,
-            }, { preferredFeed: 'forYou' });
+            const identity = await identifyFriendsScreen(shot, screen.scale);
             console.log(
                 `Post-engage identity: kind=${identity.kind} confidence=${identity.confidence.toFixed(2)}`
                 + `${identity.reasons.length ? ` [${identity.reasons.join(', ')}]` : ''}`,
             );
-            if (identity.kind === 'fyp') return;
+            if (identity.kind === 'following') return;
             if (identity.kind === 'comments') {
                 await dismissCommentSheet(driver!, isCommentSheetOpen);
                 return;
             }
-            if (identity.kind === 'following' && identity.reasons.includes('followingTabSelected')) {
-                await tapCoordinate(driver!, forYouTabX, forYouTabY, 'For You tab');
-                await driver!.pause(1100);
+            if (identity.kind === 'home' || identity.kind === 'reels') {
+                await tapFollowingTabOnly();
                 return;
             }
             console.log(`Post-engage settle deferred (${identity.kind})`);
@@ -492,66 +470,36 @@ try {
 
     const deadline = Date.now() + durationMinutes * 60_000;
 
-    // Agentic loop: identify → watch → engage → scroll.
-    // Relaunch only when identify hard-fails off FYP (Live/Search), not every clip.
     while (!stopRequested && hasTimeRemaining(Date.now(), deadline)) {
-        const onFyp = await ensureForYouFeed();
-        if (!onFyp) {
-            // Do not swipe on SpringBoard — only relaunch/retry.
+        const onFriends = await ensureFriendsFeed();
+        if (!onFriends) {
             await cancellableDelay(clampToDeadline(Date.now(), deadline, 1200));
             continue;
         }
         if (stopRequested || !hasTimeRemaining(Date.now(), deadline)) break;
 
         videosViewed += 1;
-
-        // Carousels: short glance then engage/swipe — full watch durations feel stuck.
-        let carousel = false;
-        try {
-            const [shot] = await Promise.all([remoteControl.getScreenshot(udid)]);
-            carousel = await detectTikTokCarousel(shot);
-            if (carousel) console.log('Carousel detected — short watch then engage/swipe');
-        } catch (error) {
-            console.log(`Carousel detect skipped: ${error instanceof Error ? error.message : String(error)}`);
-        }
-        const watchMs = carousel
-            ? Math.round(700 + Math.random() * 700)
-            : pickWatchDurationMs(profile);
-        await cancellableDelay(clampToDeadline(Date.now(), deadline, watchMs));
+        await cancellableDelay(clampToDeadline(Date.now(), deadline, pickWatchDurationMs(profile)));
         if (stopRequested || !hasTimeRemaining(Date.now(), deadline)) break;
 
-        // Carousel bias is for natural profiles only — DIALED always engages fully.
-        const willLike = likeEnabled && (
-            personality === 'dialed' ? decideLike(profile)
-                : carousel ? Math.random() < 0.85 : decideLike(profile)
-        );
-        const willSave = saveEnabled && (
-            personality === 'dialed' ? decideSave(profile)
-                : carousel ? Math.random() < 0.35 : decideSave(profile)
-        );
-        const willComment = commentEnabled && (
-            personality === 'dialed' ? decideComment(profile)
-                : !carousel && decideComment(profile)
-        );
+        const willLike = likeEnabled && decideLike(profile);
+        const willComment = commentEnabled && decideComment(profile);
 
-        if (willLike || willSave || willComment) {
+        if (willLike || willComment) {
             try {
                 const [freshShot, screen] = await Promise.all([
                     remoteControl.getScreenshot(udid),
                     remoteControl.getScreenInfo(udid),
                 ]);
-                const identity = await identifyTikTokScreen(freshShot, screen.scale, {
-                    like: seedLike,
-                    save: seedSave,
-                }, { preferredFeed: 'forYou' });
+                const identity = await identifyFriendsScreen(freshShot, screen.scale);
                 console.log(
                     `Pre-engage identity: kind=${identity.kind} confidence=${identity.confidence.toFixed(2)}`
                     + `${identity.reasons.length ? ` [${identity.reasons.join(', ')}]` : ''}`,
                 );
-                if (identity.kind === 'live' || identity.kind === 'search' || identity.kind === 'off_feed'
-                    || (identity.kind === 'following' && identity.reasons.includes('followingTabSelected'))) {
+                if (identity.kind === 'search' || identity.kind === 'off_feed'
+                    || identity.kind === 'home' || identity.kind === 'reels') {
                     console.log(`Skipping engage; recovering from ${identity.kind}`);
-                    await ensureForYouFeed(2);
+                    await ensureFriendsFeed(2);
                     continue;
                 }
                 if (identity.kind === 'comments') {
@@ -561,13 +509,13 @@ try {
                 }
                 const detected = await detectEngagementControls(freshShot, screen.scale, {
                     like: seedLike,
-                    save: seedSave,
+                    save: seedSaveAnchor,
                 });
                 if (detected) applyDetectedEngagement(detected);
                 else {
                     applyEngagementSeeds();
                     console.log(
-                        `Could not refine TikTok engagement controls; using seeds like=(${likeX}, ${likeY}) save=(${saveX}, ${saveY})`,
+                        `Could not refine Instagram like control; using seed like=(${likeX}, ${likeY})`,
                     );
                 }
             } catch (error) {
@@ -598,34 +546,22 @@ try {
         }
         if (stopRequested || !hasTimeRemaining(Date.now(), deadline)) break;
 
-        if (willSave) {
-            await cancellableDelay(clampToDeadline(Date.now(), deadline, interactionPauseMs()));
-            if (stopRequested || !hasTimeRemaining(Date.now(), deadline)) break;
-            await tapCoordinate(driver, saveX, saveY, 'Save');
-            saves += 1;
-            await cancellableDelay(clampToDeadline(Date.now(), deadline, engagementSettleMs()));
-            // Collections / "added to favorites" sheets often appear after save.
-            await settleAfterEngage();
-        }
-        if (stopRequested || !hasTimeRemaining(Date.now(), deadline)) break;
-
         const { linger, extraMs } = decideLinger(profile);
-        if (!carousel && linger) {
+        if (linger) {
             await cancellableDelay(clampToDeadline(Date.now(), deadline, extraMs));
         }
         if (stopRequested || !hasTimeRemaining(Date.now(), deadline)) break;
 
         await swipeNext(driver);
         swipes += 1;
-        // Brief settle only — long pauses after swipe make carousels feel sticky.
-        await cancellableDelay(clampToDeadline(Date.now(), deadline, carousel ? 350 : 550 + Math.round(Math.random() * 250)));
+        await cancellableDelay(clampToDeadline(Date.now(), deadline, 550 + Math.round(Math.random() * 250)));
     }
 
     const elapsedMs = Date.now() - runStartedAt;
     const reason = stopRequested ? 'stopped' : 'completed';
     console.log(
-        `Finished doomscroll: videosViewed=${videosViewed} swipes=${swipes} likes=${likes}`
-        + ` saves=${saves} comments=${comments} livesSkipped=${livesSkipped} recoveries=${recoveries}`
+        `Finished Instagram engage following: videosViewed=${videosViewed} swipes=${swipes} likes=${likes}`
+        + ` comments=${comments} recoveries=${recoveries}`
         + ` elapsedMs=${elapsedMs} reason=${reason}`,
     );
 } finally {
