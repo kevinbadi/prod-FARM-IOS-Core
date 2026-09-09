@@ -1,9 +1,12 @@
 export {};
 
+type SocialTaskType = 'doomscroll' | 'post';
+
 interface Schedule {
     id: string;
     deviceUdid: string;
-    taskType: 'doomscroll' | 'post';
+    pluginId: string;
+    taskType: SocialTaskType;
     status: 'active' | 'paused' | 'completed' | 'cancelled';
     timing: { kind: string; localTime?: string; timezone?: string; weekdays?: number[]; runAt?: string };
     nextRunAt: string | null;
@@ -14,7 +17,8 @@ interface Schedule {
 interface Execution {
     id: string;
     deviceUdid: string;
-    taskType: 'doomscroll' | 'post';
+    pluginId: string;
+    taskType: SocialTaskType;
     status: string;
     scheduledFor: string;
     startedAt: string | null;
@@ -32,6 +36,16 @@ function shortDevice(udid: string): string {
 
 function date(value: string | null): string {
     return value ? new Date(value).toLocaleString() : '—';
+}
+
+function pluginLabel(pluginId: string): string {
+    if (pluginId === 'com.git-agni.instagram') return 'Instagram';
+    if (pluginId === 'com.git-agni.tiktok') return 'TikTok';
+    return pluginId.replace(/^com\.git-agni\./, '');
+}
+
+function taskLabel(pluginId: string, taskType: SocialTaskType): string {
+    return `${pluginLabel(pluginId)} ${taskType}`;
 }
 
 async function request<T>(url: string, options?: RequestInit): Promise<T> {
@@ -56,7 +70,7 @@ function renderSchedules(items: Schedule[]): void {
     schedulesElement.replaceChildren(...items.map((schedule) => {
         const row = document.createElement('article'); row.className = 'task-row';
         const copy = document.createElement('div');
-        const title = document.createElement('h3'); title.textContent = `${schedule.taskType} · ${shortDevice(schedule.deviceUdid)}`;
+        const title = document.createElement('h3'); title.textContent = `${taskLabel(schedule.pluginId, schedule.taskType)} · ${shortDevice(schedule.deviceUdid)}`;
         const meta = document.createElement('p'); meta.textContent = `${schedule.timing.kind} · next ${date(schedule.nextRunAt)}`;
         copy.append(title, meta);
         const state = document.createElement('span'); state.className = `status ${schedule.status}`; state.textContent = schedule.status;
@@ -89,7 +103,7 @@ function renderExecutions(items: Execution[]): void {
     executionsElement.replaceChildren(...items.map((execution) => {
         const row = document.createElement('article'); row.className = 'task-row';
         const copy = document.createElement('div');
-        const title = document.createElement('h3'); title.textContent = `${execution.taskType} · ${shortDevice(execution.deviceUdid)}`;
+        const title = document.createElement('h3'); title.textContent = `${taskLabel(execution.pluginId, execution.taskType)} · ${shortDevice(execution.deviceUdid)}`;
         const meta = document.createElement('p'); meta.textContent = `${date(execution.scheduledFor)}${execution.error ? ` · ${execution.error}` : ''}`;
         copy.append(title, meta);
         const state = document.createElement('span'); state.className = `status ${execution.status}`; state.textContent = execution.status;
@@ -101,7 +115,8 @@ function renderExecutions(items: Execution[]): void {
         }
         if (execution.status === 'failed' || execution.status === 'stopped') {
             actions.append(button('Retry', async () => {
-                if (execution.taskType === 'post' && !window.confirm('The post may already have reached TikTok. Retry only after checking the device.')) return;
+                if (execution.taskType === 'post'
+                    && !window.confirm(`The post may already have reached ${pluginLabel(execution.pluginId)}. Retry only after checking the device.`)) return;
                 await request(`/api/executions/${execution.id}/retry`, { method: 'POST' }); await load();
             }));
         }

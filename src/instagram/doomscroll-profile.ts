@@ -5,7 +5,6 @@ export interface ProfileConfig {
     watchMaxMs: number;
     likeChance: number;
     saveChance: number;
-    commentChance: number;
     lingerChance: number;
     lingerMinMs: number;
     lingerMaxMs: number;
@@ -14,23 +13,22 @@ export interface ProfileConfig {
 export const PROFILES: Record<Personality, ProfileConfig> = {
     skimmer: {
         watchMinMs: 1500, watchMaxMs: 4000,
-        likeChance: 0.28, saveChance: 0.10, commentChance: 0.15,
+        likeChance: 0.28, saveChance: 0.10,
         lingerChance: 0.05, lingerMinMs: 4000, lingerMaxMs: 8000,
     },
     casual: {
         watchMinMs: 4000, watchMaxMs: 9000,
-        likeChance: 0.50, saveChance: 0.22, commentChance: 0.28,
+        likeChance: 0.50, saveChance: 0.22,
         lingerChance: 0.10, lingerMinMs: 8000, lingerMaxMs: 15000,
     },
     engaged: {
         watchMinMs: 8000, watchMaxMs: 18000,
-        likeChance: 0.75, saveChance: 0.40, commentChance: 0.41,
+        likeChance: 0.75, saveChance: 0.40,
         lingerChance: 0.20, lingerMinMs: 15000, lingerMaxMs: 30000,
     },
-    // Verification profile: engage every eligible action so tap targets can be audited.
     dialed: {
         watchMinMs: 1200, watchMaxMs: 2200,
-        likeChance: 1, saveChance: 1, commentChance: 1,
+        likeChance: 1, saveChance: 1,
         lingerChance: 0, lingerMinMs: 0, lingerMaxMs: 0,
     },
 };
@@ -52,9 +50,6 @@ export interface LingerDecision {
     extraMs: number;
 }
 
-// Consumes one random() draw against lingerChance, and — only when lingering —
-// a second draw to size the extra wait. Callers that need a fixed random-call
-// count regardless of outcome should not rely on this function.
 export function decideLinger(profile: ProfileConfig, random: () => number = Math.random): LingerDecision {
     const linger = random() < profile.lingerChance;
     return { linger, extraMs: linger ? between(profile.lingerMinMs, profile.lingerMaxMs, random) : 0 };
@@ -66,11 +61,6 @@ export function decideLike(profile: ProfileConfig, random: () => number = Math.r
 
 export function decideSave(profile: ProfileConfig, random: () => number = Math.random): boolean {
     return random() < profile.saveChance;
-}
-
-/** Comment rate comes from the profile (DIALED = always when comments are enabled). */
-export function decideComment(profile: ProfileConfig, random: () => number = Math.random): boolean {
-    return random() < profile.commentChance;
 }
 
 export function clampToDeadline(nowMs: number, deadlineMs: number, desiredMs: number): number {

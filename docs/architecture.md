@@ -128,7 +128,7 @@ without the UI, for scripted or bulk (`--all`) setup.
 Every schedule and execution row carries a **task envelope**:
 
 ```
-pluginId : string        e.g. "com.git-agni.tiktok"
+pluginId : string        e.g. "com.git-agni.tiktok" or "com.git-agni.instagram"
 taskType : string        e.g. "doomscroll"
 taskVersion : integer     e.g. 1
 payload : jsonb          validated, version-specific shape
@@ -165,7 +165,9 @@ in `src/scheduler/recurrence.ts`; the next occurrence is written to
 | `src/devices/` | discovery, registry (`devices.json`), registration flow, WDA remote, wda-service, coordinate profiles, passcode lookup |
 | `src/devices/wda/` | `prepare.ts` (patch + build + sign WDA), `start.ts` (single-device WDA supervisor), `target-device.ts` (resolve which device a CLI command targets), diagnostics |
 | `src/tiktok/` | TikTok automation entrypoints (`doomscroll.ts`, `post.ts`), OCR, coordinates |
-| `src/tiktok-plugin.ts` | The built‑in plugin: task definitions, device panel, routes |
+| `src/tiktok-plugin.ts` | Built‑in TikTok plugin: task definitions, device panel, routes |
+| `src/instagram/` | Instagram automation entrypoints (`doomscroll.ts`, `post.ts`), OCR, coordinates |
+| `src/instagram-plugin.ts` | Built‑in Instagram plugin: task definitions, device panel, routes |
 | `src/plugin.ts` | **Stable plugin & auth interfaces** |
 | `src/registry.ts` | `PluginRegistry` — task resolution and validation |
 | `src/loader.ts` | Dynamic import of `PHONE_FARM_PLUGINS` / `PHONE_FARM_AUTH_PLUGIN` |

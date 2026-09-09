@@ -6,6 +6,7 @@ import { PluginRegistry } from '../registry.js';
 import { createSchedulerRuntime } from '../scheduler/runtime.js';
 import { assertSafeBind } from '../security.js';
 import { createTikTokPlugin } from '../tiktok-plugin.js';
+import { createInstagramPlugin } from '../instagram-plugin.js';
 import { defaultDashboardTheme } from '../dashboard-theme.js';
 import { DeviceRegistrationService } from '../devices/registration.js';
 import { createApp, type DashboardTheme } from './app.js';
@@ -19,8 +20,11 @@ export interface StartServerOptions {
 }
 
 export async function defaultPlugins(): Promise<PhoneFarmPlugin[]> {
-    return [createTikTokPlugin({ bundleId: process.env.TIKTOK_BUNDLE_ID }),
-        ...await loadPlugins(configuredPluginModules())];
+    return [
+        createTikTokPlugin({ bundleId: process.env.TIKTOK_BUNDLE_ID }),
+        createInstagramPlugin({ bundleId: process.env.INSTAGRAM_BUNDLE_ID }),
+        ...await loadPlugins(configuredPluginModules()),
+    ];
 }
 
 export async function startServer(options: StartServerOptions = {}) {

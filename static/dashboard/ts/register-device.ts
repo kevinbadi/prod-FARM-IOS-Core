@@ -7,7 +7,7 @@ interface Snapshot {
     id: string; device: Device & { productType?: string; modelName?: string }; name: string; coordinateProfile?: string;
     availableProfiles: Array<{ name: string; displayName: string; screenSize: { width: number; height: number } }>;
     recommendedProfile?: string;
-    wdaLocalPort: number; mjpegLocalPort: number; tiktokAccounts: string[]; hasPasscode: boolean;
+    wdaLocalPort: number; mjpegLocalPort: number; tiktokAccounts: string[]; instagramAccounts: string[]; hasPasscode: boolean;
     busy: boolean; checks: Record<string, RegistrationCheck>; logs: string[]; canFinalize: boolean; finalized: boolean;
 }
 
@@ -21,6 +21,7 @@ const form = document.querySelector<HTMLFormElement>('#registration-details')!;
 const nameInput = document.querySelector<HTMLInputElement>('#registration-name')!;
 const profileInput = document.querySelector<HTMLSelectElement>('#registration-profile')!;
 const accountsInput = document.querySelector<HTMLInputElement>('#registration-accounts')!;
+const instagramAccountsInput = document.querySelector<HTMLInputElement>('#registration-instagram-accounts')!;
 const passcodeInput = document.querySelector<HTMLInputElement>('#registration-passcode')!;
 const ports = document.querySelector<HTMLElement>('#registration-ports')!;
 const checks = document.querySelector<HTMLElement>('#registration-checks')!;
@@ -89,6 +90,7 @@ function render(snapshot: Snapshot): void {
         profileInput.value = snapshot.coordinateProfile ?? (snapshot.availableProfiles.some(({ name }) => name === previous) ? previous : '');
     }
     if (document.activeElement !== accountsInput) accountsInput.value = snapshot.tiktokAccounts.join(', ');
+    if (document.activeElement !== instagramAccountsInput) instagramAccountsInput.value = (snapshot.instagramAccounts ?? []).join(', ');
     passcodeInput.placeholder = snapshot.hasPasscode ? 'Passcode saved in this setup session' : 'Optional numeric passcode';
     ports.textContent = `WDA ${snapshot.wdaLocalPort} · video ${snapshot.mjpegLocalPort}`;
     checks.replaceChildren(...Object.entries(snapshot.checks).map(([key, value]) => {
@@ -145,7 +147,9 @@ form.addEventListener('submit', async (event) => {
         const snapshot = await request<Snapshot>(`/api/device-registrations/${encodeURIComponent(currentId)}`, {
             method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify({
                 name: nameInput.value, coordinateProfile: profileInput.value,
-                tiktokAccounts: accountsInput.value.split(','), passcode: passcodeInput.value || undefined,
+                tiktokAccounts: accountsInput.value.split(','),
+                instagramAccounts: instagramAccountsInput.value.split(','),
+                passcode: passcodeInput.value || undefined,
             }),
         });
         passcodeInput.value = ''; render(snapshot);

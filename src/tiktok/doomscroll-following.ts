@@ -73,11 +73,10 @@ const accountSwitchCoords = {
     switcherTriggerX: tiktokCoordinates.accountSwitcher.x,
     switcherTriggerY: tiktokCoordinates.accountSwitcher.y,
 };
-// switchTikTokAccount ends on the Profile tab (it re-checks there to verify
-// the switch). The scroll loop below expects the Home / For You feed.
+// switchTikTokAccount ends on the Profile tab; following doomscroll needs Home
+// then the Following header tab.
 const { x: homeTabX, y: homeTabY } = tiktokCoordinates.homeTab;
-const forYouTabX = Math.round(coordinates.screenSize.width * 0.62);
-const forYouTabY = tiktokCoordinates.followingTab.y;
+const { x: followingTabX, y: followingTabY } = tiktokCoordinates.followingTab;
 
 // Fail fast, before unlocking or launching TikTok, if the requested account
 // isn't one this device is registered for.
@@ -179,7 +178,7 @@ let liveSwipeAttempts = 0;
 const runStartedAt = Date.now();
 
 console.log(
-    `Starting doomscroll: profile=${personality} requestedDurationMinutes=${durationMinutes}`
+    `Starting following doomscroll: profile=${personality} requestedDurationMinutes=${durationMinutes}`
     + ` likeEnabled=${likeEnabled} saveEnabled=${saveEnabled} commentEnabled=${commentEnabled}`,
 );
 
@@ -294,13 +293,15 @@ try {
     if (switchAccountName) {
         console.log(`Switching to TikTok account "${switchAccountName}"`);
         await switchTikTokAccount(driver, remoteControl, udid, switchAccountName, accountSwitchCoords);
-        // switchTikTokAccount leaves the app on the Profile tab; the loop
-        // below expects the Home feed.
-        await tapCoordinate(driver, homeTabX, homeTabY, 'Home tab');
-        await driver.pause(1500);
     }
 
-    // Seeds from profile + optional dashboard calibration. Each FYP video
+    // Always land on Home → Following before the agentic loop.
+    await tapCoordinate(driver, homeTabX, homeTabY, 'Home tab');
+    await driver.pause(1200);
+    await tapCoordinate(driver, followingTabX, followingTabY, 'Following tab');
+    await driver.pause(1500);
+
+    // Seeds from profile + optional dashboard calibration. Each Following video
     // re-detects near these points so rail drift does not hit the LIVE avatar.
     const seedLike = { x: likeX, y: likeY };
     const seedSave = { x: saveX, y: saveY };
@@ -347,12 +348,11 @@ try {
     }
 
     /**
-     * Screenshot → classify → recover until we are on FYP.
-     * Off-FYP recovery relaunches TikTok — chasing Live X is brittle because
-     * that same top-right slot becomes Search on the For You feed.
+     * Screenshot → classify → recover until we are on the Following feed.
+     * Off-feed recovery relaunches TikTok, then re-opens Home → Following.
      */
     async function relaunchTikTok(): Promise<void> {
-        console.log('Relaunching TikTok to reset to For You');
+        console.log('Relaunching TikTok to reset to Following');
         recoveries += 1;
         try {
             await driver!.terminateApp(tiktokBundleId);
@@ -362,7 +362,6 @@ try {
         await driver!.pause(900);
         await driver!.activateApp(tiktokBundleId);
         await driver!.pause(3500);
-        // After a popup/terminate we can land on SpringBoard if activate races.
         for (let tryActivate = 1; tryActivate <= 3; tryActivate++) {
             try {
                 const state = await driver!.queryAppState(tiktokBundleId);
@@ -374,9 +373,20 @@ try {
             await driver!.activateApp(tiktokBundleId);
             await driver!.pause(2500);
         }
+        await tapCoordinate(driver!, homeTabX, homeTabY, 'Home tab');
+        await driver!.pause(1000);
+        await tapCoordinate(driver!, followingTabX, followingTabY, 'Following tab');
+        await driver!.pause(1400);
     }
 
-    async function ensureForYouFeed(maxAttempts = 6): Promise<boolean> {
+    async function openFollowingTab(): Promise<void> {
+        await tapCoordinate(driver!, homeTabX, homeTabY, 'Home tab');
+        await driver!.pause(900);
+        await tapCoordinate(driver!, followingTabX, followingTabY, 'Following tab');
+        await driver!.pause(1200);
+    }
+
+    async function ensureFollowingFeed(maxAttempts = 6): Promise<boolean> {
         for (let attempt = 1; attempt <= maxAttempts; attempt++) {
             if (stopRequested) return false;
             let screenshot: Buffer;
@@ -403,19 +413,17 @@ try {
                 + `${identity.reasons.length ? ` [${identity.reasons.join(', ')}]` : ''} attempt=${attempt}`,
             );
 
-            if (identity.kind === 'fyp') {
+            if (identity.kind === 'following') {
                 liveSwipeAttempts = 0;
                 return true;
             }
 
-            // Comment / collections sheets are cheap to dismiss without a full relaunch.
             if (identity.kind === 'comments') {
                 console.log('Dismissing comment/collections sheet');
                 await dismissCommentSheet(driver!, isCommentSheetOpen);
                 continue;
             }
 
-            // Live: swipe past first (cheap). Only relaunch if we stay on Live.
             if (identity.kind === 'live') {
                 if (liveSwipeAttempts === 0) livesSkipped += 1;
                 if (liveSwipeAttempts < 2) {
@@ -432,31 +440,27 @@ try {
                 continue;
             }
 
-            // On Following — tap For You without a full relaunch.
-            if (identity.kind === 'following') {
-                console.log('On Following — switching to For You tab');
+            // On For You (or unknown home feed) — tap Following without a full relaunch.
+            if (identity.kind === 'fyp') {
+                console.log('On For You — switching to Following tab');
                 liveSwipeAttempts = 0;
-                await tapCoordinate(driver!, forYouTabX, forYouTabY, 'For You tab');
-                await driver!.pause(1200);
+                await openFollowingTab();
                 continue;
             }
 
             liveSwipeAttempts = 0;
-            // Search / SpringBoard / unrecognized — kill and reopen onto Home/FYP.
             await relaunchTikTok();
         }
-        console.log('Could not recover to For You feed after identify/relaunch attempts');
+        console.log('Could not recover to Following feed after identify/relaunch attempts');
         return false;
     }
 
     const deadline = Date.now() + durationMinutes * 60_000;
 
-    // Agentic loop: identify → watch → engage → scroll.
-    // Relaunch only when identify hard-fails off FYP (Live/Search), not every clip.
+    // Agentic loop: identify Following → watch → engage → scroll.
     while (!stopRequested && hasTimeRemaining(Date.now(), deadline)) {
-        const onFyp = await ensureForYouFeed();
-        if (!onFyp) {
-            // Do not swipe on SpringBoard — only relaunch/retry.
+        const onFollowing = await ensureFollowingFeed();
+        if (!onFollowing) {
             await cancellableDelay(clampToDeadline(Date.now(), deadline, 1200));
             continue;
         }
@@ -464,7 +468,6 @@ try {
 
         videosViewed += 1;
 
-        // Carousels: short glance then engage/swipe — full watch durations feel stuck.
         let carousel = false;
         try {
             const [shot] = await Promise.all([remoteControl.getScreenshot(udid)]);
@@ -479,7 +482,6 @@ try {
         await cancellableDelay(clampToDeadline(Date.now(), deadline, watchMs));
         if (stopRequested || !hasTimeRemaining(Date.now(), deadline)) break;
 
-        // On carousels, bias toward engaging so we don't linger without a tap.
         const willLike = likeEnabled && (carousel ? Math.random() < 0.85 : decideLike(profile));
         const willSave = saveEnabled && (carousel ? Math.random() < 0.35 : decideSave(profile));
         const willComment = !carousel && commentEnabled && decideComment(profile);
@@ -498,9 +500,9 @@ try {
                     `Pre-engage identity: kind=${identity.kind} confidence=${identity.confidence.toFixed(2)}`
                     + `${identity.reasons.length ? ` [${identity.reasons.join(', ')}]` : ''}`,
                 );
-                if (identity.kind === 'live' || identity.kind === 'search' || identity.kind === 'off_feed' || identity.kind === 'following') {
+                if (identity.kind === 'live' || identity.kind === 'search' || identity.kind === 'off_feed' || identity.kind === 'fyp') {
                     console.log(`Skipping engage; recovering from ${identity.kind}`);
-                    await ensureForYouFeed(2);
+                    await ensureFollowingFeed(2);
                     continue;
                 }
                 if (identity.kind === 'comments') {
@@ -543,7 +545,7 @@ try {
             await postComment(driver, commentText, isCommentSheetOpen);
             comments += 1;
             await cancellableDelay(clampToDeadline(Date.now(), deadline, engagementSettleMs()));
-            await ensureForYouFeed(2);
+            await ensureFollowingFeed(2);
         }
         if (stopRequested || !hasTimeRemaining(Date.now(), deadline)) break;
 
@@ -553,8 +555,7 @@ try {
             await tapCoordinate(driver, saveX, saveY, 'Save');
             saves += 1;
             await cancellableDelay(clampToDeadline(Date.now(), deadline, engagementSettleMs()));
-            // Collections / "added to favorites" sheets often appear after save.
-            await ensureForYouFeed(2);
+            await ensureFollowingFeed(2);
         }
         if (stopRequested || !hasTimeRemaining(Date.now(), deadline)) break;
 
@@ -566,14 +567,13 @@ try {
 
         await swipeNext(driver);
         swipes += 1;
-        // Brief settle only — long pauses after swipe make carousels feel sticky.
         await cancellableDelay(clampToDeadline(Date.now(), deadline, carousel ? 350 : 550 + Math.round(Math.random() * 250)));
     }
 
     const elapsedMs = Date.now() - runStartedAt;
     const reason = stopRequested ? 'stopped' : 'completed';
     console.log(
-        `Finished doomscroll: videosViewed=${videosViewed} swipes=${swipes} likes=${likes}`
+        `Finished following doomscroll: videosViewed=${videosViewed} swipes=${swipes} likes=${likes}`
         + ` saves=${saves} comments=${comments} livesSkipped=${livesSkipped} recoveries=${recoveries}`
         + ` elapsedMs=${elapsedMs} reason=${reason}`,
     );

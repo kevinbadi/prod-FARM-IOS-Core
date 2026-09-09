@@ -11,8 +11,8 @@
     <header class="topbar">
         <div class="topbar-inner">
             <div class="brand">
-                <a class="brand-name" href="/">iOS Farm</a>
-                <a class="brand-by" href="https://gethandler.ai" target="_blank" rel="noopener">by Handler</a>
+                <a class="brand-name" href="/">IOS AGENTS</a>
+                <span class="brand-by">by kevbuilds apps</span>
             </div>
             <nav class="topbar-nav"><a class="button secondary" href="/">Back to devices</a>__PLUGIN_NAV____AUTH_NAV__</nav>
         </div>
@@ -35,7 +35,8 @@
             <form id="registration-details" class="registration-form">
                 <label>Device name<input id="registration-name" name="name" required maxlength="100"></label>
                 <label>Coordinate profile <span class="field-help">The detected model is recommended automatically; you may override it.</span><select id="registration-profile" name="coordinateProfile" required><option value="">Detecting model</option></select></label>
-                <label class="wide">TikTok accounts <span class="field-help">Optional. Add comma-separated signed-in handles now, or manage them later from the device page.</span><input id="registration-accounts" name="accounts" placeholder="@account_one, @account_two"></label>
+                <label class="wide">TikTok accounts <span class="field-help">Optional. Comma-separated signed-in handles, or manage later from the device page.</span><input id="registration-accounts" name="accounts" placeholder="@tiktok_one, @tiktok_two"></label>
+                <label class="wide">Instagram accounts <span class="field-help">Optional. Comma-separated signed-in handles, or manage later from the device page.</span><input id="registration-instagram-accounts" name="instagramAccounts" placeholder="@ig_one, @ig_two"></label>
                 <label class="wide">Unlock passcode <span class="field-help">Optional; stored only in the git-ignored owner-readable devices.json file, never returned by the API.</span><input id="registration-passcode" name="passcode" type="password" inputmode="numeric" autocomplete="off" pattern="[0-9]{4,}"></label>
                 <div class="wide inline-actions"><button class="button secondary" type="submit">Save details</button><span id="registration-ports" class="run-meta"></span></div>
             </form>
@@ -48,7 +49,7 @@
                     <li>Sign in at Xcode → Settings → Accounts and ensure the shared development team has an Apple Development certificate.</li>
                     <li>Enable Settings → Privacy &amp; Security → Developer Mode, restart, then confirm Enable with the phone passcode.</li>
                     <li>If iOS blocks WDA, trust its profile under Settings → General → VPN &amp; Device Management.</li>
-                    <li>Install TikTok from the App Store and sign in to every handle entered above.</li>
+                    <li>Install TikTok and Instagram from the App Store and sign in to every handle entered above.</li>
                 </ol>
             </section>
 

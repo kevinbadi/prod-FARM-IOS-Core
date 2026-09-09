@@ -8,11 +8,13 @@ export * from './registry.js';
 export * from './loader.js';
 export * from './security.js';
 export * from './tiktok-plugin.js';
+export * from './instagram-plugin.js';
 export * from './dashboard-theme.js';
 export { activeDevices, loadRegisteredDevices, saveRegisteredDevices } from './devices/registry.js';
 export {
-    CALIBRATABLE_POINTS, POINT_LABELS, resolveDeviceCoordinates, validateCoordinateOverrides,
-    type CalibratablePoint, type DeviceCoordinateOverrides,
+    CALIBRATABLE_POINTS, POINT_LABELS, TIKTOK_POINT_LABELS, INSTAGRAM_POINT_LABELS, labelsForApp,
+    resolveDeviceCoordinates, validateCoordinateOverrides, parseSocialApp,
+    type CalibratablePoint, type DeviceCoordinateOverrides, type SocialAppName, type SocialAppCoordinates,
 } from './devices/coordinates.js';
 export {
     DeviceRegistrationService,

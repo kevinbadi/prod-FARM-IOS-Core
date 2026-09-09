@@ -27,13 +27,12 @@ interface Match {
 
 const HEART_PATH = 'M32 56C28 51 7 38 7 21C7 10 20 5 32 17C44 5 57 10 57 21C57 38 36 51 32 56Z';
 const BOOKMARK_PATH = 'M13 6Q13 3 17 3H47Q51 3 51 7V59L32 47L13 59Z';
-// Low-confidence pairs often latch onto the like-count text or the creator
-// avatar instead of the heart/bookmark glyphs — prefer profile seeds then.
+// Low-confidence pairs often latch onto count text or avatars.
 const MIN_PAIR_CONFIDENCE = 0.72;
 /** Seeded local search half-extents in logical points. */
 const SEED_WINDOW_X_PT = 28;
 const SEED_WINDOW_Y_PT = 45;
-/** Reject heart matches this many points above the like seed (LIVE avatar). */
+/** Reject heart matches this many points above the like seed (avatar). */
 const MAX_LIKE_ABOVE_SEED_PT = 35;
 
 const templateCache = new Map<string, Float64Array>();

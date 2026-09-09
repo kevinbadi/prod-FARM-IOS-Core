@@ -1,6 +1,6 @@
 # Phone Farm iOS
 
-An open-source, standalone application for operating physical iOS devices and running scheduled TikTok workflows. It includes guided device registration, WDA/Appium supervision, live video and remote input, PostgreSQL-backed scheduling, recurring jobs, uploads, execution history, the dashboard/API server, and a built-in TikTok automation plugin.
+An open-source, standalone application for operating physical iOS devices and running scheduled TikTok and Instagram workflows. It includes guided device registration, WDA/Appium supervision, live video and remote input, PostgreSQL-backed scheduling, recurring jobs, uploads, execution history, the dashboard/API server, and built-in TikTok + Instagram automation plugins.
 
 It runs locally as-is; authentication is optional on a loopback bind. Harden it for a shared or exposed deployment by supplying your own `AuthProvider` (`PHONE_FARM_AUTH_PLUGIN`) and process supervision — no fork required. Tasks are persisted as `pluginId`, `taskType`, `taskVersion`, and a JSON payload, so an old schedule can never silently execute a new contract.
 
@@ -37,7 +37,7 @@ npm run worker
 npm run web
 ```
 
-TikTok support is enabled by default. Set `PHONE_FARM_PLUGINS` to comma-separated ESM package names to add more task plugins. Set `PHONE_FARM_AUTH_PLUGIN` to an ESM authentication provider before binding `WEB_HOST` outside loopback; startup deliberately fails otherwise.
+TikTok and Instagram support are enabled by default. Set `PHONE_FARM_PLUGINS` to comma-separated ESM package names to add more task plugins. Set `PHONE_FARM_AUTH_PLUGIN` to an ESM authentication provider before binding `WEB_HOST` outside loopback; startup deliberately fails otherwise.
 
 ## Plugin contract
 

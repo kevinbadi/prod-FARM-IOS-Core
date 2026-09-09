@@ -2,7 +2,8 @@
 
 Phone Farm iOS drives physical iPhones from a local dashboard: guided device
 registration, a live screen with remote tap/swipe, and a PostgreSQL‑backed
-scheduler that runs versioned automation tasks (a TikTok plugin ships built‑in).
+scheduler that runs versioned automation tasks (TikTok and Instagram plugins
+ship built‑in).
 
 ## Requirements
 
@@ -129,9 +130,9 @@ device, and step through the checks. Unlock the phone when WDA first launches.
 
 ## 7. Schedule something
 
-From a device page you can run the built‑in TikTok tasks (`doomscroll`,
-`post`) now or on a `daily`/`weekly`/`once` schedule. Watch progress in
-**Activity**; full logs are under `GET /api/executions/:id`.
+From a device page you can run the built‑in TikTok and Instagram tasks
+(`doomscroll`, `post`) now or on a `daily`/`weekly`/`once` schedule. Watch
+progress in **Activity**; full logs are under `GET /api/executions/:id`.
 
 ## Authentication
 
@@ -156,7 +157,10 @@ Registered devices live in `devices.json` (git‑ignored):
     "mjpegLocalPort": 9100,
     "coordinateProfile": "iphone8",
     "passcode": "123456",
-    "pluginData": { "com.git-agni.tiktok": { "accounts": ["@handle"] } }
+    "pluginData": {
+      "com.git-agni.tiktok": { "accounts": ["@handle"] },
+      "com.git-agni.instagram": { "accounts": ["@handle"] }
+    }
   }
 ]
 ```

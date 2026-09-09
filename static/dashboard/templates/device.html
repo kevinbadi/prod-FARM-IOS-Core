@@ -11,14 +11,15 @@
     <header class="topbar">
         <div class="topbar-inner">
             <div class="brand">
-                <a class="brand-name" href="/">iOS Farm</a>
-                <a class="brand-by" href="https://gethandler.ai" target="_blank" rel="noopener">by Handler</a>
+                <a class="brand-name" href="/">IOS AGENTS</a>
+                <span class="brand-by">by kevbuilds apps</span>
             </div>
             <nav class="topbar-nav">
                 <a class="crumb" href="/">Devices</a>
                 <a class="crumb" href="/tasks">Tasks</a>
                 <button id="open-tasks" class="button secondary" type="button">Tasks &amp; schedules</button>
-                <button id="open-accounts" class="button secondary" type="button">Accounts</button>
+                <button id="open-accounts" class="button secondary" type="button">TikTok accounts</button>
+                <button id="open-instagram-accounts" class="button secondary" type="button">Instagram accounts</button>
                 <button id="open-passcode" class="button secondary" type="button">Passcode</button>
                 <button id="open-calibrate" class="button secondary" type="button">Touch points</button>
                 <button id="open-remove" class="button danger" type="button">Remove device</button>
@@ -62,6 +63,13 @@
                 </div>
                 <div id="status" class="stream-status"><span class="dot"></span><span>Waiting for device details…</span></div>
                 <p class="hint">Click to tap and drag to swipe. Remote input pauses while a doomscroll session is running.</p>
+                <div class="train-bar">
+                    <button id="train-toggle" class="button secondary" type="button">Train workflow</button>
+                    <button id="train-save" class="button primary" type="button" hidden>Save recording</button>
+                    <button id="train-clear" class="button secondary" type="button" hidden>Clear</button>
+                    <span id="train-status" class="run-meta" aria-live="polite"></span>
+                </div>
+                <ol id="train-steps" class="train-steps" hidden></ol>
             </section>
             <div class="action-stack">
                 <section class="panel">
@@ -69,12 +77,39 @@
                         <div><span class="eyebrow">TikTok</span><h2>Doomscroll</h2></div>
                         <button id="open-doomscroll" class="button secondary" type="button">Configure</button>
                     </div>
-                    <p>Run a timed, personality-driven doomscrolling session on this device.</p>
+                    <p>Scroll → identify (skip Live) → like/comment/save → scroll.</p>
+                </section>
+                <section class="panel">
+                    <div class="section-heading">
+                        <div><span class="eyebrow">TikTok</span><h2>Doomscroll Following</h2></div>
+                        <button id="open-following-doomscroll" class="button secondary" type="button">Configure</button>
+                    </div>
+                    <p>Same agentic loop as For You — but screenshot identity keeps the session on the Following feed.</p>
+                </section>
+                <section class="panel">
+                    <div class="section-heading">
+                        <div><span class="eyebrow">TikTok</span><h2>Workflows</h2></div>
+                        <button id="refresh-workflows" class="button secondary" type="button">Refresh</button>
+                    </div>
+                    <p>Replay trained gesture patterns recorded from the live screen.</p>
+                    <div id="workflow-list" class="task-list loading-card"><span class="spinner" aria-hidden="true"></span>Loading workflows…</div>
                 </section>
                 <section class="panel post-card">
                     <div><span class="eyebrow">TikTok</span><h2>Create a post</h2></div>
                     <p>Upload a video or ordered slideshow, then save it as a draft or publish it.</p>
                     <button id="open-post" class="button secondary" type="button">Prepare post</button>
+                </section>
+                <section class="panel">
+                    <div class="section-heading">
+                        <div><span class="eyebrow">Instagram</span><h2>Doomscroll</h2></div>
+                        <button id="open-instagram-doomscroll" class="button secondary" type="button">Configure</button>
+                    </div>
+                    <p>Run a timed, personality-driven doomscrolling session on Instagram.</p>
+                </section>
+                <section class="panel post-card">
+                    <div><span class="eyebrow">Instagram</span><h2>Create a post</h2></div>
+                    <p>Upload a video or ordered slideshow, then save it as a draft or publish it.</p>
+                    <button id="open-instagram-post" class="button secondary" type="button">Prepare post</button>
                 </section>
                 <section class="panel activity-card">
                     <div><span class="eyebrow">Device activity</span><h2>Automation log</h2></div>
@@ -91,8 +126,13 @@
         <div class="modal tasks-modal">
             <div class="modal-head">
                 <div><span class="eyebrow">This device</span><h2>Tasks &amp; schedules</h2></div>
-                <div class="inline-actions"><a href="/tasks" class="button secondary">View all tasks</a><button id="close-tasks" class="icon-button" type="button">Close</button></div>
+                <div class="inline-actions">
+                    <button id="clear-device-queue" class="button danger" type="button">Clear queue</button>
+                    <a href="/tasks" class="button secondary">View all tasks</a>
+                    <button id="close-tasks" class="icon-button" type="button">Close</button>
+                </div>
             </div>
+            <p id="device-queue-status" class="queue-status-line" aria-live="polite">Checking queue…</p>
             <h3>Schedules</h3>
             <div id="device-schedules" class="task-list loading-card"><span class="spinner" aria-hidden="true"></span>Loading schedules…</div>
             <h3>Recent runs</h3>
@@ -109,6 +149,18 @@
             <label for="device-accounts">Account handles</label>
             <input id="device-accounts" type="text" value="__TIKTOK_ACCOUNTS_VALUE__" placeholder="@account_one, @account_two">
             <div class="form-actions"><span id="accounts-result" class="run-meta" aria-live="polite"></span><span class="spacer"></span><button class="button primary" type="submit">Save accounts</button></div>
+        </form>
+    </dialog>
+    <dialog id="instagram-accounts-dialog">
+        <form id="instagram-accounts-form" class="modal">
+            <div class="modal-head">
+                <div><span class="eyebrow">Instagram</span><h2>Accounts</h2></div>
+                <button id="close-instagram-accounts" class="icon-button" type="button">Close</button>
+            </div>
+            <p>Handles already signed in on this device. Leave empty to use only the currently active account.</p>
+            <label for="instagram-device-accounts">Account handles</label>
+            <input id="instagram-device-accounts" type="text" value="__INSTAGRAM_ACCOUNTS_VALUE__" placeholder="@account_one, @account_two">
+            <div class="form-actions"><span id="instagram-accounts-result" class="run-meta" aria-live="polite"></span><span class="spacer"></span><button class="button primary" type="submit">Save accounts</button></div>
         </form>
     </dialog>
     <dialog id="passcode-dialog">
@@ -148,6 +200,11 @@
             </div>
             <p>Pick a target, then click where it belongs on the live screen. Untouched targets use the <strong id="cal-profile">…</strong> profile.</p>
             <div class="cal-toolbar">
+                <label for="cal-app">App</label>
+                <select id="cal-app">
+                    <option value="tiktok">TikTok</option>
+                    <option value="instagram">Instagram</option>
+                </select>
                 <label class="cal-switch"><input id="cal-control" type="checkbox"><span class="cal-switch-track" aria-hidden="true"></span><span>Control device</span></label>
                 <button id="cal-unlock" class="button secondary" type="button"><span aria-hidden="true">🔓</span> Unlock</button>
             </div>
@@ -184,6 +241,7 @@
                 <option value="skimmer">Skimmer</option>
                 <option value="casual" selected>Casual</option>
                 <option value="engaged">Engaged</option>
+                <option value="dialed">DIALED (engage everything — verify taps)</option>
             </select>
             <label for="doomscroll-account">TikTok account</label>
             <select id="doomscroll-account" name="account">
@@ -192,7 +250,11 @@
             <fieldset><legend>Engagement</legend><div class="choices">
                 <label><input type="checkbox" name="likeEnabled" checked> Like videos</label>
                 <label><input type="checkbox" name="saveEnabled" checked> Save videos</label>
+                <label><input id="doomscroll-comment-enabled" type="checkbox" name="commentEnabled"> Comment</label>
             </div></fieldset>
+            <label for="doomscroll-comment-text">Comment text</label>
+            <input id="doomscroll-comment-text" name="commentText" type="text" maxlength="150" placeholder="🔥" disabled>
+            <p class="hint">Set the comment before starting — automation pastes this preset text (no soft-keyboard typing).</p>
             <label class="checkbox-option"><input id="doomscroll-recurring" type="checkbox"> Recurring</label>
             <div id="doomscroll-start-options" class="field">
                 <label for="doomscroll-start-kind">Start</label>
@@ -216,8 +278,76 @@
             <input id="doomscroll-run-at-iso" name="runAt" type="hidden"><input class="browser-timezone" name="timezone" type="hidden">
             <p class="warning">Save uses a blind bookmark toggle — there is no reliable way to detect whether a video is already saved, so this may unsave one.</p>
             <div class="form-actions">
+                <span id="doomscroll-result" class="run-meta" aria-live="polite"></span>
+                <span class="spacer"></span>
                 <button id="cancel-doomscroll" class="button secondary" type="button">Cancel</button>
                 <button class="button primary" type="submit">Start doomscroll</button>
+            </div>
+        </form>
+    </dialog>
+    <dialog id="following-doomscroll-dialog">
+        <form id="following-doomscroll-form" class="modal" hx-post="/api/devices/__DEVICE_UDID__/fragments/following-scroll-run"
+            hx-target="#device-activity" hx-swap="outerHTML" hx-disabled-elt="button">
+            <div class="modal-head">
+                <div><span class="eyebrow">TikTok</span><h2>Doomscroll Following</h2></div>
+                <button id="close-following-doomscroll" class="icon-button" type="button">Close</button>
+            </div>
+            <p>Duplicate of the perfected For You doomscroll. Opens Home → Following, then identify → engage → scroll while verifying the Following tab via screenshots.</p>
+            <label for="following-doomscroll-duration">Duration (minutes)</label>
+            <input id="following-doomscroll-duration" name="durationMinutes" type="number" min="1" max="180" value="5" required>
+            <div class="duration-shortcuts">
+                <button type="button" data-following-doomscroll-duration="1">1 min</button>
+                <button type="button" data-following-doomscroll-duration="5">5 min</button>
+                <button type="button" data-following-doomscroll-duration="15">15 min</button>
+            </div>
+            <label for="following-doomscroll-personality">Personality</label>
+            <select id="following-doomscroll-personality" name="personality">
+                <option value="skimmer">Skimmer</option>
+                <option value="casual" selected>Casual</option>
+                <option value="engaged">Engaged</option>
+                <option value="dialed">DIALED (engage everything — verify taps)</option>
+            </select>
+            <label for="following-doomscroll-account">TikTok account</label>
+            <select id="following-doomscroll-account" name="account">
+                <option value="">Don't switch</option>__TIKTOK_ACCOUNT_OPTIONS__
+            </select>
+            <fieldset><legend>Engagement</legend><div class="choices">
+                <label><input type="checkbox" name="likeEnabled" checked> Like videos</label>
+                <label><input type="checkbox" name="saveEnabled" checked> Save videos</label>
+                <label><input id="following-comment-enabled" type="checkbox" name="commentEnabled"> Comment</label>
+            </div></fieldset>
+            <label for="following-comment-text">Comment text</label>
+            <input id="following-comment-text" name="commentText" type="text" maxlength="150" placeholder="Nice one 🔥" disabled>
+            <p class="hint">Set the comment before starting — automation pastes this preset text.</p>
+            <input name="scheduleKind" type="hidden" value="now">
+            <input class="browser-timezone" name="timezone" type="hidden">
+            <div class="form-actions">
+                <span id="following-doomscroll-result" class="run-meta" aria-live="polite"></span>
+                <span class="spacer"></span>
+                <button id="cancel-following-doomscroll" class="button secondary" type="button">Cancel</button>
+                <button class="button primary" type="submit">Start following doomscroll</button>
+            </div>
+        </form>
+    </dialog>
+    <dialog id="train-save-dialog">
+        <form id="train-save-form" class="modal">
+            <div class="modal-head">
+                <div><span class="eyebrow">TikTok</span><h2>Save workflow</h2></div>
+                <button id="close-train-save" class="icon-button" type="button">Close</button>
+            </div>
+            <p>Gestures near known controls are auto-labeled (like, save, comment, swipe). You can refine labels after saving via the API.</p>
+            <label for="train-workflow-name">Name</label>
+            <input id="train-workflow-name" type="text" maxlength="80" placeholder="following-engage" required>
+            <label for="train-workflow-feed">Feed hint</label>
+            <select id="train-workflow-feed">
+                <option value="following" selected>Following</option>
+                <option value="forYou">For You</option>
+            </select>
+            <div class="form-actions">
+                <span id="train-save-result" class="run-meta" aria-live="polite"></span>
+                <span class="spacer"></span>
+                <button id="cancel-train-save" class="button secondary" type="button">Cancel</button>
+                <button class="button primary" type="submit">Save</button>
             </div>
         </form>
     </dialog>
@@ -262,6 +392,109 @@
             <div id="publish-confirm" class="publish-confirm"><label><input id="confirm-publish" type="checkbox"> I understand this will publish to the signed-in TikTok account.</label></div>
             <p id="post-result" aria-live="polite"></p>
             <div class="form-actions"><button id="cancel-post" class="button secondary" type="button">Cancel</button><button id="submit-post" class="button primary" type="submit">Save to Drafts</button></div>
+        </form>
+    </dialog>
+    <dialog id="instagram-doomscroll-dialog">
+        <form id="instagram-doomscroll-form" class="modal" hx-post="/api/devices/__DEVICE_UDID__/instagram/fragments/scroll-run"
+            hx-target="#device-activity" hx-swap="outerHTML" hx-disabled-elt="button">
+            <div class="modal-head">
+                <div><span class="eyebrow">Instagram</span><h2>Configure doomscroll</h2></div>
+                <button id="close-instagram-doomscroll" class="icon-button" type="button">Close</button>
+            </div>
+            <p>Run a timed, personality-driven doomscrolling session on Instagram.</p>
+            <label for="instagram-doomscroll-duration">Duration (minutes)</label>
+            <input id="instagram-doomscroll-duration" name="durationMinutes" type="number" min="1" max="180" value="5" required>
+            <div class="duration-shortcuts">
+                <button type="button" data-instagram-doomscroll-duration="1">1 min</button>
+                <button type="button" data-instagram-doomscroll-duration="5">5 min</button>
+                <button type="button" data-instagram-doomscroll-duration="15">15 min</button>
+            </div>
+            <label for="instagram-doomscroll-personality">Personality</label>
+            <select id="instagram-doomscroll-personality" name="personality">
+                <option value="skimmer">Skimmer</option>
+                <option value="casual" selected>Casual</option>
+                <option value="engaged">Engaged</option>
+                <option value="dialed">DIALED (engage everything — verify taps)</option>
+            </select>
+            <label for="instagram-doomscroll-account">Instagram account</label>
+            <select id="instagram-doomscroll-account" name="account">
+                <option value="">Don't switch</option>__INSTAGRAM_ACCOUNT_OPTIONS__
+            </select>
+            <fieldset><legend>Engagement</legend><div class="choices">
+                <label><input type="checkbox" name="likeEnabled" checked> Like posts</label>
+                <label><input type="checkbox" name="saveEnabled" checked> Save posts</label>
+            </div></fieldset>
+            <label class="checkbox-option"><input id="instagram-doomscroll-recurring" type="checkbox"> Recurring</label>
+            <div id="instagram-doomscroll-start-options" class="field">
+                <label for="instagram-doomscroll-start-kind">Start</label>
+                <select id="instagram-doomscroll-start-kind"><option value="now">Now</option><option value="once">Once</option></select>
+            </div>
+            <div id="instagram-doomscroll-once-fields" class="schedule-fields" hidden>
+                <div class="field"><label for="instagram-doomscroll-run-at">One-time date and time</label><input id="instagram-doomscroll-run-at" type="datetime-local"></div>
+            </div>
+            <div id="instagram-doomscroll-recurring-fields" class="schedule-fields" hidden>
+                <div class="field"><label for="instagram-doomscroll-frequency">Repeat</label><select id="instagram-doomscroll-frequency"><option value="daily">Daily</option><option value="weekly">Weekly</option></select></div>
+                <div class="field"><label for="instagram-doomscroll-local-time">Time</label><input id="instagram-doomscroll-local-time" name="localTime" type="time" value="09:00"></div>
+                <fieldset id="instagram-doomscroll-weekday-fields" class="weekday-field" hidden><legend>Days</legend><div class="weekday-options">
+                    <label><input type="checkbox" value="1" checked><span>Mon</span></label><label><input type="checkbox" value="2" checked><span>Tue</span></label>
+                    <label><input type="checkbox" value="3" checked><span>Wed</span></label><label><input type="checkbox" value="4" checked><span>Thu</span></label>
+                    <label><input type="checkbox" value="5" checked><span>Fri</span></label><label><input type="checkbox" value="6"><span>Sat</span></label>
+                    <label><input type="checkbox" value="0"><span>Sun</span></label>
+                </div></fieldset>
+            </div>
+            <div id="instagram-doomscroll-run-window-field" class="field schedule-window" hidden><label for="instagram-doomscroll-run-window">Run window (minutes)</label><input id="instagram-doomscroll-run-window" name="runWindowMinutes" type="number" min="1" max="1440" value="30"></div>
+            <input id="instagram-doomscroll-schedule-kind" name="scheduleKind" type="hidden" value="now"><input id="instagram-doomscroll-weekdays" name="weekdays" type="hidden" value="1,2,3,4,5">
+            <input id="instagram-doomscroll-run-at-iso" name="runAt" type="hidden"><input class="browser-timezone" name="timezone" type="hidden">
+            <p class="warning">Save uses a blind bookmark toggle — there is no reliable way to detect whether a post is already saved, so this may unsave one.</p>
+            <div class="form-actions">
+                <span id="instagram-doomscroll-result" class="run-meta" aria-live="polite"></span>
+                <span class="spacer"></span>
+                <button id="cancel-instagram-doomscroll" class="button secondary" type="button">Cancel</button>
+                <button class="button primary" type="submit">Start doomscroll</button>
+            </div>
+        </form>
+    </dialog>
+    <dialog id="instagram-post-dialog">
+        <form id="instagram-post-form" class="modal">
+            <div class="modal-head"><div><span class="eyebrow">Instagram</span><h2>Create post</h2></div><button id="close-instagram-post" class="icon-button" type="button">Close</button></div>
+            <p>Choose one video or up to three slideshow images. Reorder images before starting.</p>
+            <label for="instagram-media">Media</label>
+            <input id="instagram-media" name="media-picker" type="file" accept="video/*,image/*" multiple required>
+            <ol id="instagram-media-list"></ol>
+            <label for="instagram-music-url">Music URL <small>(optional)</small></label>
+            <input id="instagram-music-url" type="url" placeholder="https://…">
+            <label for="instagram-caption">Caption <small>(optional)</small></label>
+            <textarea id="instagram-caption" maxlength="2200" placeholder="Write a caption…"></textarea>
+            <label for="instagram-post-account">Instagram account</label>
+            <select id="instagram-post-account" name="account" required>
+                <option value="" disabled selected>Choose an account…</option>__INSTAGRAM_ACCOUNT_OPTIONS__
+            </select>
+            <fieldset><legend>Finish as</legend><div class="choices">
+                <label><input type="radio" name="destination" value="draft" checked> Save to Drafts</label>
+                <label><input type="radio" name="destination" value="publish"> Post publicly</label>
+            </div></fieldset>
+            <label class="checkbox-option"><input id="instagram-post-recurring" type="checkbox"> Recurring</label>
+            <div id="instagram-post-start-options" class="field">
+                <label for="instagram-post-start-kind">Start</label>
+                <select id="instagram-post-start-kind"><option value="now">Now</option><option value="once">Once</option></select>
+            </div>
+            <div id="instagram-post-once-fields" class="schedule-fields" hidden>
+                <div class="field"><label for="instagram-post-run-at">One-time date and time</label><input id="instagram-post-run-at" type="datetime-local"></div>
+            </div>
+            <div id="instagram-post-recurring-fields" class="schedule-fields" hidden>
+                <div class="field"><label for="instagram-post-frequency">Repeat</label><select id="instagram-post-frequency"><option value="daily">Daily</option><option value="weekly">Weekly</option></select></div>
+                <div class="field"><label for="instagram-post-local-time">Time</label><input id="instagram-post-local-time" type="time" value="09:00"></div>
+                <fieldset id="instagram-post-weekday-fields" class="weekday-field" hidden><legend>Days</legend><div class="weekday-options">
+                    <label><input type="checkbox" value="1" checked><span>Mon</span></label><label><input type="checkbox" value="2" checked><span>Tue</span></label>
+                    <label><input type="checkbox" value="3" checked><span>Wed</span></label><label><input type="checkbox" value="4" checked><span>Thu</span></label>
+                    <label><input type="checkbox" value="5" checked><span>Fri</span></label><label><input type="checkbox" value="6"><span>Sat</span></label>
+                    <label><input type="checkbox" value="0"><span>Sun</span></label>
+                </div></fieldset>
+            </div>
+            <div id="instagram-post-run-window-field" class="field schedule-window" hidden><label for="instagram-post-run-window">Run window (minutes)</label><input id="instagram-post-run-window" type="number" min="1" max="1440" value="30"></div>
+            <div id="instagram-publish-confirm" class="publish-confirm"><label><input id="instagram-confirm-publish" type="checkbox"> I understand this will publish to the signed-in Instagram account.</label></div>
+            <p id="instagram-post-result" aria-live="polite"></p>
+            <div class="form-actions"><button id="cancel-instagram-post" class="button secondary" type="button">Cancel</button><button id="submit-instagram-post" class="button primary" type="submit">Save to Drafts</button></div>
         </form>
     </dialog>
     <script type="module" src="/assets/device.js"></script>

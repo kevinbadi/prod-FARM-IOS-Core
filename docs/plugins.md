@@ -28,9 +28,24 @@ const plugin: PhoneFarmPlugin = {
 export default plugin;
 ```
 
-It is loaded by setting `PHONE_FARM_PLUGINS` to a comma‑separated list of ESM
-package names. `loadPlugins()` imports each and expects a `default` (or
-`plugin`) export with an `id` and a `tasks` array.
+## Built-in social plugins
+
+`defaultPlugins()` in `src/api/server.ts` and `src/scheduler/worker.ts` always
+loads both:
+
+| Plugin id | Package export | Tasks | Bundle env |
+| --- | --- | --- | --- |
+| `com.git-agni.tiktok` | `@git-agni/phone-farm-core/tiktok` | `doomscroll@1`, `post@1` | `TIKTOK_BUNDLE_ID` (default `com.zhiliaoapp.musically`) |
+| `com.git-agni.instagram` | `@git-agni/phone-farm-core/instagram` | `doomscroll@1`, `post@1` | `INSTAGRAM_BUNDLE_ID` (default `com.burbn.instagram`) |
+
+Instagram HTTP routes are namespaced under `/plugins/com.git-agni.instagram/instagram/…`
+so they do not collide with TikTok’s `/accounts` and `/posts`. Set accounts on
+the device page (or during registration); both plugins store
+`pluginData[id].accounts`.
+
+Extra plugins still load via `PHONE_FARM_PLUGINS` (comma‑separated ESM package
+names). `loadPlugins()` imports each and expects a `default` (or `plugin`)
+export with an `id` and a `tasks` array.
 
 > **`web` and `worker` must be given the identical plugin set and versions.**
 > `web` validates payloads and renders panels; `worker` executes. A mismatch

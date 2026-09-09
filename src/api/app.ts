@@ -11,7 +11,8 @@ import { Readable } from 'node:stream';
 import { discoverConnectedDevices } from '../devices/discovery.js';
 import { loadRegisteredDevices, mutateRegisteredDevices, saveRegisteredDevices, redactDevice, PASSCODE_PATTERN, type RegisteredDevice } from '../devices/registry.js';
 import {
-    CALIBRATABLE_POINTS, POINT_LABELS, coordinatesForProfile, resolveDeviceCoordinates, validateCoordinateOverrides,
+    CALIBRATABLE_POINTS, labelsForApp, coordinatesForProfile, resolveDeviceCoordinates,
+    validateCoordinateOverrides, parseSocialApp,
 } from '../devices/coordinates.js';
 import { RegistryWdaRemoteControl } from '../devices/registry-remote.js';
 import type {
@@ -73,9 +74,49 @@ function escapeHtml(value: unknown): string {
     })[character] ?? character);
 }
 
+function formatClock(ms: number): string {
+    const totalSeconds = Math.max(0, Math.floor(ms / 1000));
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
+    return `${minutes}:${String(seconds).padStart(2, '0')}`;
+}
+
+function automationTimerHtml(execution: {
+    status: string;
+    startedAt: Date | null;
+    finishedAt: Date | null;
+    payload: JsonObject;
+}): string {
+    const durationMinutes = Number(execution.payload.durationMinutes);
+    const hasDuration = Number.isFinite(durationMinutes) && durationMinutes > 0;
+    const plannedMs = hasDuration ? durationMinutes * 60_000 : null;
+
+    if (execution.status === 'running' && execution.startedAt) {
+        const elapsedMs = Date.now() - execution.startedAt.getTime();
+        if (plannedMs != null) {
+            const remainingMs = Math.max(0, plannedMs - elapsedMs);
+            const overtime = elapsedMs > plannedMs;
+            return `<div class="run-timer" aria-live="polite"><span class="timer-label">Session timer</span><span class="timer-values">${escapeHtml(formatClock(elapsedMs))} elapsed · ${overtime ? 'past planned end' : `${escapeHtml(formatClock(remainingMs))} left`} · ${escapeHtml(String(durationMinutes))} min planned</span></div>`;
+        }
+        return `<div class="run-timer" aria-live="polite"><span class="timer-label">Session timer</span><span class="timer-values">${escapeHtml(formatClock(elapsedMs))} elapsed</span></div>`;
+    }
+
+    if (execution.status === 'queued' && plannedMs != null) {
+        return `<div class="run-timer"><span class="timer-label">Session timer</span><span class="timer-values">Waiting to start · ${escapeHtml(String(durationMinutes))} min planned</span></div>`;
+    }
+
+    if (execution.startedAt && execution.finishedAt) {
+        const elapsedMs = execution.finishedAt.getTime() - execution.startedAt.getTime();
+        const planned = plannedMs != null ? ` · ${escapeHtml(String(durationMinutes))} min planned` : '';
+        return `<div class="run-timer"><span class="timer-label">Session timer</span><span class="timer-values">Ran ${escapeHtml(formatClock(elapsedMs))}${planned}</span></div>`;
+    }
+
+    return '';
+}
+
 // Shown at the foot of every dashboard page. Override the link with
 // PHONE_FARM_BRAND_URL; the text is fixed.
-const FOOTER_HTML = `Built by <a href="${escapeHtml(process.env.PHONE_FARM_BRAND_URL ?? 'https://agniverse.co')}" target="_blank" rel="noopener">Agniverse</a>, with love and curry &#10084;&#65039;`;
+const FOOTER_HTML = `Built by <a href="${escapeHtml(process.env.PHONE_FARM_BRAND_URL ?? '#')}" target="_blank" rel="noopener">kevbuilds apps</a> with love &#10084;&#65039;`;
 
 function page(title: string, body: string, logoutPath?: string, navLinks: readonly PluginNavLink[] = []): string {
     const logout = logoutPath ? `<a href="${escapeHtml(logoutPath)}" style="float:right;margin-right:0">Log out</a>` : '';
@@ -196,9 +237,20 @@ export async function createApp(options: CreateAppOptions): Promise<FastifyInsta
     }
 
     const renderActivity = async (deviceUdid: string, message?: string): Promise<string> => {
-        const executions = await options.scheduler.listExecutions(25, deviceUdid);
-        const execution = executions.find(({ status }) => status === 'running') ?? executions[0];
-        if (!execution) return `<section id="device-activity" class="run-panel"><div class="run-heading"><span class="status idle"><span class="dot"></span>idle</span><span class="run-meta">No automation has run on this device yet.</span></div>${message ? `<p class="run-error">${escapeHtml(message)}</p>` : ''}<pre>Waiting for output…</pre></section>`;
+        const executions = await options.scheduler.listExecutions(50, deviceUdid);
+        const running = executions.filter(({ status }) => status === 'running');
+        const queued = executions.filter(({ status }) => status === 'queued');
+        const execution = running[0] ?? queued[0] ?? executions[0];
+        const queueSummary = [
+            running.length ? `${running.length} running` : null,
+            queued.length ? `${queued.length} queued` : null,
+        ].filter(Boolean).join(' · ') || 'idle';
+        const clearQueue = (running.length + queued.length) > 0
+            ? `<form class="queue-clear-form" hx-post="/api/devices/${encodeURIComponent(deviceUdid)}/queue/clear" hx-target="#device-activity" hx-swap="outerHTML"><button class="button danger" type="submit">Clear queue</button></form>`
+            : '';
+        if (!execution) {
+            return `<section id="device-activity" class="run-panel"><div class="run-heading"><span class="status idle"><span class="dot"></span>idle</span><span class="run-meta">No automation has run on this device yet.</span></div>${message ? `<p class="run-error">${escapeHtml(message)}</p>` : ''}<pre>Waiting for output…</pre></section>`;
+        }
         const detail = await options.scheduler.execution(execution.id);
         // A plugin (or task version) can be uninstalled while old executions
         // still reference it — degrade instead of throwing out of the fragment.
@@ -214,8 +266,9 @@ export async function createApp(options: CreateAppOptions): Promise<FastifyInsta
             : `${execution.pluginId}/${execution.taskType}@${execution.taskVersion} (plugin not installed)`;
         const canStop = execution.status === 'queued' || (execution.status === 'running' && (definition?.supportsStop(execution.payload) ?? true));
         const stop = canStop
-            ? `<form hx-post="/api/executions/${execution.id}/stop" hx-target="#device-activity" hx-swap="outerHTML"><button class="button secondary" type="submit">Stop</button></form>` : '';
-        return `<section id="device-activity" class="run-panel" hx-get="/api/devices/${encodeURIComponent(deviceUdid)}/fragments/activity" hx-trigger="every 1s" hx-swap="outerHTML"><div class="run-heading"><span class="status ${escapeHtml(execution.status)}"><span class="dot"></span>${escapeHtml(execution.status)}</span><span class="run-meta">${escapeHtml(summary)} · ${escapeHtml(execution.scheduledFor.toISOString())}</span></div>${message ? `<p class="run-error">${escapeHtml(message)}</p>` : ''}${stop}<pre>${detail?.logs.length ? detail.logs.map(escapeHtml).join('\n') : escapeHtml(execution.error ?? 'Waiting for worker output…')}</pre></section>`;
+            ? `<form hx-post="/api/executions/${execution.id}/stop" hx-target="#device-activity" hx-swap="outerHTML"><button class="button secondary" type="submit">Stop current</button></form>` : '';
+        const timer = automationTimerHtml(execution);
+        return `<section id="device-activity" class="run-panel" hx-get="/api/devices/${encodeURIComponent(deviceUdid)}/fragments/activity" hx-trigger="every 1s" hx-swap="outerHTML"><div class="run-heading"><span class="status ${escapeHtml(execution.status)}"><span class="dot"></span>${escapeHtml(execution.status)}</span><span class="run-meta">${escapeHtml(summary)} · ${escapeHtml(execution.scheduledFor.toISOString())}</span></div>${timer}<div class="queue-bar"><span class="queue-summary"><span class="status ${queued.length || running.length ? 'queued' : 'idle'}"><span class="dot"></span></span>Queue: ${escapeHtml(queueSummary)}</span><div class="inline-actions">${clearQueue}${stop}</div></div>${message ? `<p class="run-error">${escapeHtml(message)}</p>` : ''}<pre>${detail?.logs.length ? detail.logs.map(escapeHtml).join('\n') : escapeHtml(execution.error ?? 'Waiting for worker output…')}</pre></section>`;
     };
 
     app.get('/health', async () => {
@@ -293,9 +346,9 @@ export async function createApp(options: CreateAppOptions): Promise<FastifyInsta
             return reply.code(201).send(redactDevice(created));
         },
     );
-    app.patch<{ Params: { udid: string }; Body: { name?: string; wdaLocalPort?: number; mjpegLocalPort?: number; passcode?: string; coordinates?: unknown; disabled?: boolean; coordinateProfile?: string; pluginData?: Record<string, JsonObject> } }>(
+    app.patch<{ Params: { udid: string }; Body: { name?: string; wdaLocalPort?: number; mjpegLocalPort?: number; passcode?: string; coordinates?: unknown; instagramCoordinates?: unknown; disabled?: boolean; coordinateProfile?: string; pluginData?: Record<string, JsonObject> } }>(
         '/api/devices/:udid', async (request, reply) => {
-            const { passcode, coordinates, name, wdaLocalPort, mjpegLocalPort, disabled, coordinateProfile, pluginData } = request.body;
+            const { passcode, coordinates, instagramCoordinates, name, wdaLocalPort, mjpegLocalPort, disabled, coordinateProfile, pluginData } = request.body;
             if (passcode !== undefined && passcode !== '' && !PASSCODE_PATTERN.test(passcode)) {
                 return reply.code(400).send({ error: 'Device passcode must contain at least four digits' });
             }
@@ -321,24 +374,33 @@ export async function createApp(options: CreateAppOptions): Promise<FastifyInsta
                     if (Object.keys(overrides).length === 0) delete device.coordinates;
                     else device.coordinates = overrides;
                 }
+                if (instagramCoordinates !== undefined) {
+                    const overrides = validateCoordinateOverrides(instagramCoordinates, device.coordinateProfile);
+                    if (Object.keys(overrides).length === 0) delete device.instagramCoordinates;
+                    else device.instagramCoordinates = overrides;
+                }
                 return device;
             });
             remote.forget(request.params.udid);
             return redactDevice(updated);
         },
     );
-    app.get<{ Params: { udid: string } }>('/api/devices/:udid/coordinates', async (request, reply) => {
+    app.get<{ Params: { udid: string }; Querystring: { app?: string } }>('/api/devices/:udid/coordinates', async (request, reply) => {
         const device = (await loadRegisteredDevices()).find(({ udid }) => udid === request.params.udid);
         if (!device) return reply.code(404).send({ error: 'Device not found' });
-        const base = coordinatesForProfile(device.coordinateProfile).tiktok;
-        const effective = resolveDeviceCoordinates(device.coordinateProfile, device.coordinates).tiktok;
+        const app = parseSocialApp(request.query.app);
+        const overrides = app === 'instagram' ? device.instagramCoordinates : device.coordinates;
+        const base = coordinatesForProfile(device.coordinateProfile)[app];
+        const effective = resolveDeviceCoordinates(device.coordinateProfile, overrides, app)[app];
+        const labels = labelsForApp(app);
         return {
+            app,
             profile: device.coordinateProfile ?? 'iphone8',
             screenSize: coordinatesForProfile(device.coordinateProfile).screenSize,
             points: CALIBRATABLE_POINTS.map((name) => ({
-                name, label: POINT_LABELS[name],
+                name, label: labels[name],
                 default: base[name], current: effective[name],
-                overridden: Boolean(device.coordinates?.[name]),
+                overridden: Boolean(overrides?.[name]),
             })),
         };
     });
@@ -506,6 +568,16 @@ export async function createApp(options: CreateAppOptions): Promise<FastifyInsta
             return reply.type('text/html').send(await renderActivity(execution?.deviceUdid ?? ''));
         }
         return { result };
+    });
+    app.post<{ Params: { udid: string } }>('/api/devices/:udid/queue/clear', async (request, reply) => {
+        const result = await options.scheduler.clearDeviceQueue(request.params.udid);
+        const note = result.cancelled || result.stopping
+            ? `Cleared ${result.cancelled} queued · stopping ${result.stopping} running`
+            : 'Queue already empty';
+        if (request.headers['hx-request']) {
+            return reply.type('text/html').send(await renderActivity(request.params.udid, note));
+        }
+        return result;
     });
     app.post<{ Params: { id: string } }>('/api/executions/:id/retry', async (request, reply) => {
         const execution = await options.scheduler.retryExecution(request.params.id);

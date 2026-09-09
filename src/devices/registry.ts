@@ -14,6 +14,8 @@ export interface RegisteredDevice {
     passcode?: string;
     /** Per-device single-tap coordinate overrides (dashboard calibration). */
     coordinates?: DeviceCoordinateOverrides;
+    /** Instagram single-tap overrides (dashboard calibration). */
+    instagramCoordinates?: DeviceCoordinateOverrides;
     /** When true the farm keeps the entry but stops supervising it — no WDA, no worker, no discovery polling. */
     disabled?: boolean;
     pluginData: Record<string, JsonObject>;

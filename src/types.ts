@@ -15,7 +15,10 @@ export interface RegisteredDevice extends DeviceIdentity {
     /** Compiled tap-layout key; canonical here, not in pluginData. */
     coordinateProfile?: string;
     passcode?: string;
+    /** TikTok single-tap overrides (legacy flat map). */
     coordinates?: Record<string, { x: number; y: number }>;
+    /** Instagram single-tap overrides. */
+    instagramCoordinates?: Record<string, { x: number; y: number }>;
     disabled?: boolean;
     pluginData: Record<string, JsonObject>;
 }

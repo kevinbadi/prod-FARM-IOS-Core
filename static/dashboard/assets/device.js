@@ -46,6 +46,68 @@ const elements = {
     doomscrollWeekdays: element('#doomscroll-weekdays'),
     doomscrollRunAt: element('#doomscroll-run-at'),
     doomscrollRunAtIso: element('#doomscroll-run-at-iso'),
+    doomscrollResult: element('#doomscroll-result'),
+    doomscrollCommentEnabled: element('#doomscroll-comment-enabled'),
+    doomscrollCommentText: element('#doomscroll-comment-text'),
+    openFollowingDoomscroll: element('#open-following-doomscroll'),
+    followingDoomscrollDialog: element('#following-doomscroll-dialog'),
+    closeFollowingDoomscroll: element('#close-following-doomscroll'),
+    cancelFollowingDoomscroll: element('#cancel-following-doomscroll'),
+    followingDoomscrollForm: element('#following-doomscroll-form'),
+    followingDoomscrollDuration: element('#following-doomscroll-duration'),
+    followingDoomscrollDurationButtons: Array.from(document.querySelectorAll('[data-following-doomscroll-duration]')),
+    followingCommentEnabled: element('#following-comment-enabled'),
+    followingCommentText: element('#following-comment-text'),
+    followingDoomscrollResult: element('#following-doomscroll-result'),
+    trainToggle: element('#train-toggle'),
+    trainSave: element('#train-save'),
+    trainClear: element('#train-clear'),
+    trainStatus: element('#train-status'),
+    trainSteps: element('#train-steps'),
+    trainSaveDialog: element('#train-save-dialog'),
+    trainSaveForm: element('#train-save-form'),
+    closeTrainSave: element('#close-train-save'),
+    cancelTrainSave: element('#cancel-train-save'),
+    trainWorkflowName: element('#train-workflow-name'),
+    trainWorkflowFeed: element('#train-workflow-feed'),
+    trainSaveResult: element('#train-save-result'),
+    refreshWorkflows: element('#refresh-workflows'),
+    workflowList: element('#workflow-list'),
+    openInstagramPost: element('#open-instagram-post'),
+    openInstagramDoomscroll: element('#open-instagram-doomscroll'),
+    instagramDoomscrollDialog: element('#instagram-doomscroll-dialog'),
+    closeInstagramDoomscroll: element('#close-instagram-doomscroll'),
+    cancelInstagramDoomscroll: element('#cancel-instagram-doomscroll'),
+    instagramDoomscrollDuration: element('#instagram-doomscroll-duration'),
+    instagramDoomscrollDurationButtons: Array.from(document.querySelectorAll('[data-instagram-doomscroll-duration]')),
+    instagramPostDialog: element('#instagram-post-dialog'),
+    instagramPostForm: element('#instagram-post-form'),
+    closeInstagramPost: element('#close-instagram-post'),
+    cancelInstagramPost: element('#cancel-instagram-post'),
+    submitInstagramPost: element('#submit-instagram-post'),
+    instagramMedia: element('#instagram-media'),
+    instagramMediaList: element('#instagram-media-list'),
+    instagramMusicUrl: element('#instagram-music-url'),
+    instagramCaption: element('#instagram-caption'),
+    instagramPostAccount: element('#instagram-post-account'),
+    instagramPublishConfirm: element('#instagram-publish-confirm'),
+    instagramConfirmPublish: element('#instagram-confirm-publish'),
+    instagramPostResult: element('#instagram-post-result'),
+    instagramDoomscrollForm: element('#instagram-doomscroll-form'),
+    instagramDoomscrollRecurring: element('#instagram-doomscroll-recurring'),
+    instagramDoomscrollStartOptions: element('#instagram-doomscroll-start-options'),
+    instagramDoomscrollStartKind: element('#instagram-doomscroll-start-kind'),
+    instagramDoomscrollOnceFields: element('#instagram-doomscroll-once-fields'),
+    instagramDoomscrollRecurringFields: element('#instagram-doomscroll-recurring-fields'),
+    instagramDoomscrollFrequency: element('#instagram-doomscroll-frequency'),
+    instagramDoomscrollWeekdayFields: element('#instagram-doomscroll-weekday-fields'),
+    instagramDoomscrollWeekdayInputs: Array.from(document.querySelectorAll('#instagram-doomscroll-weekday-fields input[type="checkbox"]')),
+    instagramDoomscrollRunWindowField: element('#instagram-doomscroll-run-window-field'),
+    instagramDoomscrollScheduleKind: element('#instagram-doomscroll-schedule-kind'),
+    instagramDoomscrollWeekdays: element('#instagram-doomscroll-weekdays'),
+    instagramDoomscrollRunAt: element('#instagram-doomscroll-run-at'),
+    instagramDoomscrollRunAtIso: element('#instagram-doomscroll-run-at-iso'),
+    instagramDoomscrollResult: element('#instagram-doomscroll-result'),
     timezoneInputs: Array.from(document.querySelectorAll('.browser-timezone')),
     postRecurring: element('#post-recurring'),
     postStartOptions: element('#post-start-options'),
@@ -59,12 +121,30 @@ const elements = {
     postRunAt: element('#post-run-at'),
     postLocalTime: element('#post-local-time'),
     postRunWindow: element('#post-run-window'),
+    instagramPostRecurring: element('#instagram-post-recurring'),
+    instagramPostStartOptions: element('#instagram-post-start-options'),
+    instagramPostStartKind: element('#instagram-post-start-kind'),
+    instagramPostOnceFields: element('#instagram-post-once-fields'),
+    instagramPostRecurringFields: element('#instagram-post-recurring-fields'),
+    instagramPostFrequency: element('#instagram-post-frequency'),
+    instagramPostWeekdayFields: element('#instagram-post-weekday-fields'),
+    instagramPostWeekdayInputs: Array.from(document.querySelectorAll('#instagram-post-weekday-fields input[type="checkbox"]')),
+    instagramPostRunWindowField: element('#instagram-post-run-window-field'),
+    instagramPostRunAt: element('#instagram-post-run-at'),
+    instagramPostLocalTime: element('#instagram-post-local-time'),
+    instagramPostRunWindow: element('#instagram-post-run-window'),
     accountsForm: element('#accounts-form'),
     deviceAccounts: element('#device-accounts'),
     accountsResult: element('#accounts-result'),
     accountsDialog: element('#accounts-dialog'),
     openAccounts: element('#open-accounts'),
     closeAccounts: element('#close-accounts'),
+    instagramAccountsForm: element('#instagram-accounts-form'),
+    instagramDeviceAccounts: element('#instagram-device-accounts'),
+    instagramAccountsResult: element('#instagram-accounts-result'),
+    instagramAccountsDialog: element('#instagram-accounts-dialog'),
+    openInstagramAccounts: element('#open-instagram-accounts'),
+    closeInstagramAccounts: element('#close-instagram-accounts'),
     passcodeDialog: element('#passcode-dialog'),
     openPasscode: element('#open-passcode'),
     closePasscode: element('#close-passcode'),
@@ -73,6 +153,8 @@ const elements = {
     closeRemove: element('#close-remove'),
     deviceSchedules: element('#device-schedules'),
     deviceExecutions: element('#device-executions'),
+    deviceQueueStatus: element('#device-queue-status'),
+    clearDeviceQueue: element('#clear-device-queue'),
     tasksDialog: element('#tasks-dialog'),
     openTasks: element('#open-tasks'),
     closeTasks: element('#close-tasks'),
@@ -84,6 +166,7 @@ const elements = {
     openCalibrate: element('#open-calibrate'),
     calibrateDialog: element('#calibrate-dialog'),
     closeCalibrate: element('#close-calibrate'),
+    calApp: element('#cal-app'),
     calScreen: element('#cal-screen'),
     calControl: element('#cal-control'),
     calUnlock: element('#cal-unlock'),
@@ -101,8 +184,51 @@ let screenSize;
 let paused = false;
 let connecting = false;
 let pointerStart;
+let trainRecording = false;
+let trainStartedAt = 0;
+let trainEvents = [];
+function summarizeTrainAction(action) {
+    if (action.type === 'tap')
+        return `tap (${action.x}, ${action.y})`;
+    if (action.type === 'swipe') {
+        return `swipe (${action.startX},${action.startY})→(${action.endX},${action.endY})`;
+    }
+    return action.type;
+}
+function renderTrainSteps() {
+    elements.trainSteps.innerHTML = '';
+    for (const event of trainEvents) {
+        const li = document.createElement('li');
+        li.textContent = `+${event.t}ms · ${summarizeTrainAction(event.action)}`;
+        elements.trainSteps.append(li);
+    }
+    elements.trainSteps.hidden = trainEvents.length === 0;
+    elements.trainStatus.textContent = trainRecording
+        ? `Recording… ${trainEvents.length} gesture${trainEvents.length === 1 ? '' : 's'}`
+        : (trainEvents.length ? `${trainEvents.length} gestures ready to save` : '');
+}
+function recordTrainEvent(action) {
+    if (!trainRecording)
+        return;
+    const t = Math.max(0, Math.round(performance.now() - trainStartedAt));
+    trainEvents.push({ t, action });
+    renderTrainSteps();
+}
+function setTrainRecording(active) {
+    trainRecording = active;
+    if (active) {
+        trainStartedAt = performance.now();
+        trainEvents = [];
+    }
+    elements.trainToggle.textContent = active ? 'Stop training' : 'Train workflow';
+    elements.trainSave.hidden = active || trainEvents.length === 0;
+    elements.trainClear.hidden = trainEvents.length === 0 && !active;
+    renderTrainSteps();
+}
 let orderedMedia = [];
+let instagramOrderedMedia = [];
 let postPoll;
+let instagramPostPoll;
 let connectionPoll;
 let connectionChecking = false;
 const browserTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
@@ -122,6 +248,18 @@ function updateDoomscrollSchedule() {
     elements.doomscrollRunWindowField.hidden = kind === 'now';
     elements.doomscrollRunAt.required = kind === 'once';
 }
+function updateInstagramDoomscrollSchedule() {
+    const recurring = elements.instagramDoomscrollRecurring.checked;
+    const kind = recurring ? elements.instagramDoomscrollFrequency.value : elements.instagramDoomscrollStartKind.value;
+    elements.instagramDoomscrollScheduleKind.value = kind;
+    elements.instagramDoomscrollWeekdays.value = selectedWeekdays(elements.instagramDoomscrollWeekdayInputs).join(',');
+    elements.instagramDoomscrollStartOptions.hidden = recurring;
+    elements.instagramDoomscrollOnceFields.hidden = recurring || kind !== 'once';
+    elements.instagramDoomscrollRecurringFields.hidden = !recurring;
+    elements.instagramDoomscrollWeekdayFields.hidden = !recurring || kind !== 'weekly';
+    elements.instagramDoomscrollRunWindowField.hidden = kind === 'now';
+    elements.instagramDoomscrollRunAt.required = kind === 'once';
+}
 function updatePostSchedule() {
     const recurring = elements.postRecurring.checked;
     const kind = recurring ? elements.postFrequency.value : elements.postStartKind.value;
@@ -132,25 +270,64 @@ function updatePostSchedule() {
     elements.postRunWindowField.hidden = kind === 'now';
     elements.postRunAt.required = kind === 'once';
 }
+function updateInstagramPostSchedule() {
+    const recurring = elements.instagramPostRecurring.checked;
+    const kind = recurring ? elements.instagramPostFrequency.value : elements.instagramPostStartKind.value;
+    elements.instagramPostStartOptions.hidden = recurring;
+    elements.instagramPostOnceFields.hidden = recurring || kind !== 'once';
+    elements.instagramPostRecurringFields.hidden = !recurring;
+    elements.instagramPostWeekdayFields.hidden = !recurring || kind !== 'weekly';
+    elements.instagramPostRunWindowField.hidden = kind === 'now';
+    elements.instagramPostRunAt.required = kind === 'once';
+}
 elements.doomscrollRecurring.addEventListener('change', updateDoomscrollSchedule);
 elements.doomscrollStartKind.addEventListener('change', updateDoomscrollSchedule);
 elements.doomscrollFrequency.addEventListener('change', updateDoomscrollSchedule);
 elements.doomscrollWeekdayInputs.forEach((input) => input.addEventListener('change', updateDoomscrollSchedule));
+elements.instagramDoomscrollRecurring.addEventListener('change', updateInstagramDoomscrollSchedule);
+elements.instagramDoomscrollStartKind.addEventListener('change', updateInstagramDoomscrollSchedule);
+elements.instagramDoomscrollFrequency.addEventListener('change', updateInstagramDoomscrollSchedule);
+elements.instagramDoomscrollWeekdayInputs.forEach((input) => input.addEventListener('change', updateInstagramDoomscrollSchedule));
 elements.postRecurring.addEventListener('change', updatePostSchedule);
 elements.postStartKind.addEventListener('change', updatePostSchedule);
 elements.postFrequency.addEventListener('change', updatePostSchedule);
+elements.instagramPostRecurring.addEventListener('change', updateInstagramPostSchedule);
+elements.instagramPostStartKind.addEventListener('change', updateInstagramPostSchedule);
+elements.instagramPostFrequency.addEventListener('change', updateInstagramPostSchedule);
 elements.doomscrollForm.addEventListener('submit', () => {
     updateDoomscrollSchedule();
+    elements.doomscrollResult.textContent = 'Starting…';
     elements.doomscrollRunAtIso.value = elements.doomscrollRunAt.value
         ? new Date(elements.doomscrollRunAt.value).toISOString()
         : '';
 });
+elements.instagramDoomscrollForm.addEventListener('submit', () => {
+    updateInstagramDoomscrollSchedule();
+    elements.instagramDoomscrollResult.textContent = 'Starting…';
+    elements.instagramDoomscrollRunAtIso.value = elements.instagramDoomscrollRunAt.value
+        ? new Date(elements.instagramDoomscrollRunAt.value).toISOString()
+        : '';
+});
 elements.openDoomscroll.addEventListener('click', () => elements.doomscrollDialog.showModal());
+elements.doomscrollCommentEnabled.addEventListener('change', () => {
+    elements.doomscrollCommentText.disabled = !elements.doomscrollCommentEnabled.checked;
+    if (elements.doomscrollCommentEnabled.checked && !elements.doomscrollCommentText.value.trim()) {
+        elements.doomscrollCommentText.value = '🔥';
+    }
+});
 elements.closeDoomscroll.addEventListener('click', () => elements.doomscrollDialog.close());
 elements.cancelDoomscroll.addEventListener('click', () => elements.doomscrollDialog.close());
 elements.doomscrollDurationButtons.forEach((button) => {
     button.addEventListener('click', () => {
         elements.doomscrollDuration.value = button.dataset.doomscrollDuration ?? '';
+    });
+});
+elements.openInstagramDoomscroll.addEventListener('click', () => elements.instagramDoomscrollDialog.showModal());
+elements.closeInstagramDoomscroll.addEventListener('click', () => elements.instagramDoomscrollDialog.close());
+elements.cancelInstagramDoomscroll.addEventListener('click', () => elements.instagramDoomscrollDialog.close());
+elements.instagramDoomscrollDurationButtons.forEach((button) => {
+    button.addEventListener('click', () => {
+        elements.instagramDoomscrollDuration.value = button.dataset.instagramDoomscrollDuration ?? '';
     });
 });
 function errorMessage(error) {
@@ -229,18 +406,64 @@ document.addEventListener('htmx:afterSwap', () => {
 });
 document.addEventListener('htmx:afterRequest', (event) => {
     const detail = event.detail;
-    if (detail?.elt === elements.doomscrollForm && detail.successful) {
-        elements.doomscrollDialog.close();
+    if (detail?.elt === elements.doomscrollForm) {
+        if (detail.successful) {
+            elements.doomscrollResult.textContent = '';
+            elements.doomscrollDialog.close();
+        }
+        else {
+            const message = detail.xhr?.responseText?.match(/<p class="run-error">([^<]+)<\/p>/)?.[1]
+                ?? 'Could not start doomscroll. Check Activity for details.';
+            elements.doomscrollResult.textContent = message.trim();
+        }
+    }
+    if (detail?.elt === elements.instagramDoomscrollForm) {
+        if (detail.successful) {
+            elements.instagramDoomscrollResult.textContent = '';
+            elements.instagramDoomscrollDialog.close();
+        }
+        else {
+            const message = detail.xhr?.responseText?.match(/<p class="run-error">([^<]+)<\/p>/)?.[1]
+                ?? 'Could not start doomscroll. Check Activity for details.';
+            elements.instagramDoomscrollResult.textContent = message.trim();
+        }
     }
 });
+function containContentBox(element, mediaWidth, mediaHeight) {
+    const rect = element.getBoundingClientRect();
+    const mw = mediaWidth > 0 ? mediaWidth : rect.width;
+    const mh = mediaHeight > 0 ? mediaHeight : rect.height;
+    const scale = Math.min(rect.width / mw, rect.height / mh);
+    const width = mw * scale;
+    const height = mh * scale;
+    return {
+        left: rect.left + (rect.width - width) / 2,
+        top: rect.top + (rect.height - height) / 2,
+        width,
+        height,
+        elementWidth: rect.width,
+        elementHeight: rect.height,
+    };
+}
+/** Map a pointer event on an object-fit:contain image to device points. */
+function pointFromContainedMedia(event, img, deviceSize) {
+    const mediaW = img.naturalWidth || deviceSize.width;
+    const mediaH = img.naturalHeight || deviceSize.height;
+    const box = containContentBox(img, mediaW, mediaH);
+    if (box.width <= 0 || box.height <= 0) {
+        throw new Error('Screen content size is unavailable');
+    }
+    const x = ((event.clientX - box.left) / box.width) * deviceSize.width;
+    const y = ((event.clientY - box.top) / box.height) * deviceSize.height;
+    return {
+        x: Math.max(0, Math.min(deviceSize.width, Math.round(x))),
+        y: Math.max(0, Math.min(deviceSize.height, Math.round(y))),
+    };
+}
 function pointFromEvent(event) {
     if (!screenSize)
         throw new Error('Screen dimensions are unavailable');
-    const rect = elements.screen.getBoundingClientRect();
-    return {
-        x: Math.round((event.clientX - rect.left) * screenSize.width / rect.width),
-        y: Math.round((event.clientY - rect.top) * screenSize.height / rect.height),
-    };
+    return pointFromContainedMedia(event, elements.screen, screenSize);
 }
 async function sendAction(action) {
     setStatus('Sending input…');
@@ -251,6 +474,8 @@ async function sendAction(action) {
             headers: { 'content-type': 'application/json' },
             body: JSON.stringify(action),
         });
+        if (trainRecording)
+            recordTrainEvent(action);
         setStatus(action.type === 'tap' ? `Tapped (${action.x}, ${action.y})` : 'Remote connected', 'ready');
     }
     catch (error) {
@@ -383,8 +608,42 @@ function renderMedia() {
         return item;
     }));
 }
+function renderInstagramMedia() {
+    elements.instagramMediaList.replaceChildren(...instagramOrderedMedia.map((file, index) => {
+        const item = document.createElement('li');
+        const name = document.createElement('span');
+        name.textContent = `${index + 1}. ${file.name}`;
+        const up = document.createElement('button');
+        up.type = 'button';
+        up.textContent = '↑';
+        up.title = 'Move earlier';
+        up.disabled = index === 0;
+        const down = document.createElement('button');
+        down.type = 'button';
+        down.textContent = '↓';
+        down.title = 'Move later';
+        down.disabled = index === instagramOrderedMedia.length - 1;
+        const remove = document.createElement('button');
+        remove.type = 'button';
+        remove.textContent = 'Remove';
+        up.addEventListener('click', () => {
+            [instagramOrderedMedia[index - 1], instagramOrderedMedia[index]] = [instagramOrderedMedia[index], instagramOrderedMedia[index - 1]];
+            renderInstagramMedia();
+        });
+        down.addEventListener('click', () => {
+            [instagramOrderedMedia[index], instagramOrderedMedia[index + 1]] = [instagramOrderedMedia[index + 1], instagramOrderedMedia[index]];
+            renderInstagramMedia();
+        });
+        remove.addEventListener('click', () => { instagramOrderedMedia.splice(index, 1); renderInstagramMedia(); });
+        item.append(name, up, down, remove);
+        return item;
+    }));
+}
 function selectedDestination() {
     return elements.postForm.elements.namedItem('destination').value;
+}
+function selectedInstagramDestination() {
+    return elements.instagramPostForm.elements.namedItem('destination').value;
 }
 function postTiming() {
     const kind = elements.postRecurring.checked ? elements.postFrequency.value : elements.postStartKind.value;
@@ -405,12 +664,40 @@ function postTiming() {
         weekdays,
     };
 }
+function instagramPostTiming() {
+    const kind = elements.instagramPostRecurring.checked
+        ? elements.instagramPostFrequency.value
+        : elements.instagramPostStartKind.value;
+    if (kind === 'now')
+        return { kind };
+    if (kind === 'once') {
+        if (!elements.instagramPostRunAt.value)
+            throw new Error('Choose a one-time start date');
+        return { kind, runAt: new Date(elements.instagramPostRunAt.value).toISOString() };
+    }
+    if (kind === 'daily')
+        return { kind, localTime: elements.instagramPostLocalTime.value, timezone: browserTimezone };
+    const weekdays = selectedWeekdays(elements.instagramPostWeekdayInputs);
+    if (weekdays.length === 0)
+        throw new Error('Choose at least one recurring day');
+    return {
+        kind: 'weekly', localTime: elements.instagramPostLocalTime.value, timezone: browserTimezone,
+        weekdays,
+    };
+}
 function updateDestination() {
     const publishing = selectedDestination() === 'publish';
     elements.publishConfirm.classList.toggle('visible', publishing);
     if (!publishing)
         elements.confirmPublish.checked = false;
     elements.submitPost.textContent = publishing ? 'Post publicly' : 'Save to Drafts';
+}
+function updateInstagramDestination() {
+    const publishing = selectedInstagramDestination() === 'publish';
+    elements.instagramPublishConfirm.classList.toggle('visible', publishing);
+    if (!publishing)
+        elements.instagramConfirmPublish.checked = false;
+    elements.submitInstagramPost.textContent = publishing ? 'Post publicly' : 'Save to Drafts';
 }
 async function pollPost() {
     try {
@@ -431,6 +718,27 @@ async function pollPost() {
     catch (error) {
         elements.postResult.textContent = errorMessage(error);
         elements.submitPost.disabled = false;
+    }
+}
+async function pollInstagramPost() {
+    try {
+        const run = await jsonRequest(`/api/devices/${encodeURIComponent(udid)}/instagram/posts/current`);
+        elements.instagramPostResult.textContent = run.status === 'running'
+            ? 'Post automation is running. Follow its live output in the Automation log.'
+            : '';
+        if (run.status === 'running') {
+            instagramPostPoll = window.setTimeout(() => void pollInstagramPost(), 1000);
+        }
+        else {
+            elements.submitInstagramPost.disabled = false;
+            elements.instagramPostResult.textContent = run.status === 'succeeded'
+                ? `Completed: ${run.destination === 'publish' ? 'post submitted' : 'draft saved'}.`
+                : 'Automation failed. Review the Automation log and the phone screen.';
+        }
+    }
+    catch (error) {
+        elements.instagramPostResult.textContent = errorMessage(error);
+        elements.submitInstagramPost.disabled = false;
     }
 }
 function formatDate(value) {
@@ -454,13 +762,22 @@ function taskActionButton(label, action) {
     });
     return buttonElement;
 }
-function taskTitle(taskType, payload) {
-    if (taskType === 'doomscroll') {
+function pluginLabel(pluginId) {
+    if (pluginId === 'com.git-agni.instagram')
+        return 'Instagram';
+    if (pluginId === 'com.git-agni.tiktok')
+        return 'TikTok';
+    return pluginId ? pluginId.replace(/^com\.git-agni\./, '') : 'Task';
+}
+function taskTitle(taskType, payload, pluginId) {
+    const app = pluginLabel(pluginId);
+    if (taskType === 'doomscroll' || taskType === 'doomscroll-following') {
+        const label = taskType === 'doomscroll-following' ? 'doomscroll following' : 'doomscroll';
         const details = payload?.durationMinutes ? ` · ${payload.durationMinutes} min` : '';
-        return `Doomscroll${details}`;
+        return `${app} ${label}${details}`;
     }
     const destination = payload?.destination === 'publish' ? 'Post publicly' : 'Save to drafts';
-    return payload?.account ? `${destination} · ${payload.account}` : destination;
+    return payload?.account ? `${app} · ${destination} · ${payload.account}` : `${app} · ${destination}`;
 }
 function timingDescription(timing) {
     if (timing.kind === 'once')
@@ -486,7 +803,7 @@ function renderDeviceSchedules(schedules) {
         row.className = 'task-row';
         const copy = document.createElement('div');
         const title = document.createElement('h3');
-        title.textContent = taskTitle(schedule.taskType, schedule.payload);
+        title.textContent = taskTitle(schedule.taskType, schedule.payload, schedule.pluginId);
         const meta = document.createElement('p');
         meta.textContent = `${timingDescription(schedule.timing)} · next ${formatDate(schedule.nextRunAt)}`;
         copy.append(title, meta);
@@ -513,6 +830,16 @@ function renderDeviceSchedules(schedules) {
     }));
 }
 function renderDeviceExecutions(executions) {
+    const running = executions.filter((execution) => execution.status === 'running').length;
+    const queued = executions.filter((execution) => execution.status === 'queued').length;
+    if (running || queued) {
+        elements.deviceQueueStatus.textContent = `Queue: ${running} running · ${queued} waiting`;
+        elements.clearDeviceQueue.disabled = false;
+    }
+    else {
+        elements.deviceQueueStatus.textContent = 'Queue: empty — nothing running or waiting';
+        elements.clearDeviceQueue.disabled = true;
+    }
     if (!executions.length) {
         elements.deviceExecutions.className = 'task-list empty-state';
         elements.deviceExecutions.textContent = 'No task runs for this device yet.';
@@ -524,7 +851,7 @@ function renderDeviceExecutions(executions) {
         row.className = 'task-row';
         const copy = document.createElement('div');
         const title = document.createElement('h3');
-        title.textContent = execution.taskType === 'post' ? 'Post' : 'Doomscroll';
+        title.textContent = taskTitle(execution.taskType, undefined, execution.pluginId);
         const meta = document.createElement('p');
         meta.textContent = `${formatDate(execution.scheduledFor)}${execution.error ? ` · ${execution.error}` : ''}`;
         copy.append(title, meta);
@@ -533,16 +860,18 @@ function renderDeviceExecutions(executions) {
         state.textContent = execution.status;
         const actions = document.createElement('div');
         actions.className = 'inline-actions';
-        if (execution.status === 'queued' || (execution.status === 'running' && execution.taskType === 'doomscroll')) {
+        if (execution.status === 'queued' || (execution.status === 'running' && (execution.taskType === 'doomscroll' || execution.taskType === 'doomscroll-following'))) {
             actions.append(taskActionButton(execution.status === 'queued' ? 'Cancel' : 'Stop', async () => {
                 await jsonRequest(`/api/executions/${execution.id}/stop`, { method: 'POST' });
             }));
         }
         if (execution.status === 'failed' || execution.status === 'stopped') {
             actions.append(taskActionButton('Retry', async () => {
-                if (execution.taskType === 'post'
-                    && !window.confirm('The post may already have reached TikTok. Retry only after checking the device.'))
-                    return;
+                if (execution.taskType === 'post') {
+                    const app = pluginLabel(execution.pluginId);
+                    if (!window.confirm(`The post may already have reached ${app}. Retry only after checking the device.`))
+                        return;
+                }
                 await jsonRequest(`/api/executions/${execution.id}/retry`, { method: 'POST' });
             }));
         }
@@ -635,6 +964,73 @@ elements.postForm.addEventListener('submit', async (event) => {
         elements.submitPost.disabled = false;
     }
 });
+elements.openInstagramPost.addEventListener('click', () => elements.instagramPostDialog.showModal());
+elements.closeInstagramPost.addEventListener('click', () => elements.instagramPostDialog.close());
+elements.cancelInstagramPost.addEventListener('click', () => elements.instagramPostDialog.close());
+elements.instagramMedia.addEventListener('change', () => {
+    instagramOrderedMedia = Array.from(elements.instagramMedia.files ?? []);
+    renderInstagramMedia();
+});
+elements.instagramPostForm.addEventListener('change', (event) => {
+    if (event.target.name === 'destination')
+        updateInstagramDestination();
+});
+elements.instagramPostForm.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    const destination = selectedInstagramDestination();
+    if (instagramOrderedMedia.length === 0) {
+        elements.instagramPostResult.textContent = 'Choose media first.';
+        return;
+    }
+    if (instagramOrderedMedia.length > 3) {
+        elements.instagramPostResult.textContent = 'Choose no more than three slideshow images.';
+        return;
+    }
+    const videos = instagramOrderedMedia.filter(({ type }) => type.startsWith('video/'));
+    const images = instagramOrderedMedia.filter(({ type }) => type.startsWith('image/'));
+    if (!((videos.length === 1 && instagramOrderedMedia.length === 1) || images.length === instagramOrderedMedia.length)) {
+        elements.instagramPostResult.textContent = 'Choose exactly one video, or only slideshow images.';
+        return;
+    }
+    if (destination === 'publish' && !elements.instagramConfirmPublish.checked) {
+        elements.instagramPostResult.textContent = 'Confirm public publishing before continuing.';
+        return;
+    }
+    const form = new FormData();
+    for (const file of instagramOrderedMedia)
+        form.append('media', file, file.name);
+    form.append('destination', destination);
+    form.append('musicUrl', elements.instagramMusicUrl.value);
+    form.append('caption', elements.instagramCaption.value);
+    form.append('account', elements.instagramPostAccount.value);
+    try {
+        form.append('timing', JSON.stringify(instagramPostTiming()));
+    }
+    catch (error) {
+        elements.instagramPostResult.textContent = errorMessage(error);
+        return;
+    }
+    form.append('runWindowMinutes', elements.instagramPostRunWindow.value);
+    form.append('recurringPublishConfirmed', String(destination !== 'publish' || elements.instagramConfirmPublish.checked));
+    elements.submitInstagramPost.disabled = true;
+    elements.instagramPostResult.textContent = 'Uploading media to the automation server…';
+    try {
+        const result = await jsonRequest(`/api/devices/${encodeURIComponent(udid)}/instagram/posts`, { method: 'POST', body: form });
+        window.clearTimeout(instagramPostPoll);
+        if (result.status === 'running') {
+            await pollInstagramPost();
+        }
+        else {
+            elements.submitInstagramPost.disabled = false;
+            elements.instagramPostResult.textContent = 'Post automation scheduled. Follow its status and live output in the Automation log.';
+        }
+        void loadDeviceTasks();
+    }
+    catch (error) {
+        elements.instagramPostResult.textContent = errorMessage(error);
+        elements.submitInstagramPost.disabled = false;
+    }
+});
 elements.accountsForm.addEventListener('submit', async (event) => {
     event.preventDefault();
     elements.accountsResult.textContent = 'Saving…';
@@ -662,7 +1058,35 @@ elements.accountsForm.addEventListener('submit', async (event) => {
         elements.accountsResult.textContent = errorMessage(error);
     }
 });
+elements.instagramAccountsForm.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    elements.instagramAccountsResult.textContent = 'Saving…';
+    try {
+        const result = await jsonRequest(`/api/devices/${encodeURIComponent(udid)}/instagram/accounts`, {
+            method: 'PATCH',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({ accounts: elements.instagramDeviceAccounts.value.split(',') }),
+        });
+        const previousDoomscroll = (document.querySelector('#instagram-doomscroll-account'))?.value ?? '';
+        elements.instagramPostAccount.replaceChildren(new Option('Choose an account…', '', false, true));
+        elements.instagramPostAccount.options[0].disabled = true;
+        const doomscrollAccount = element('#instagram-doomscroll-account');
+        doomscrollAccount.replaceChildren(new Option("Don't switch", ''));
+        for (const account of result.accounts) {
+            elements.instagramPostAccount.add(new Option(account, account));
+            doomscrollAccount.add(new Option(account, account));
+        }
+        if (result.accounts.includes(previousDoomscroll))
+            doomscrollAccount.value = previousDoomscroll;
+        elements.instagramDeviceAccounts.value = result.accounts.join(', ');
+        elements.instagramAccountsResult.textContent = result.accounts.length ? 'Accounts saved.' : 'Account switching is optional.';
+    }
+    catch (error) {
+        elements.instagramAccountsResult.textContent = errorMessage(error);
+    }
+});
 const cal = {
+    app: 'tiktok',
     screen: undefined,
     points: [],
     overrides: {},
@@ -699,12 +1123,21 @@ function renderCalPoints() {
 function renderCalMarkers() {
     if (!cal.screen)
         return;
+    const mediaW = elements.calScreen.naturalWidth || cal.screen.width;
+    const mediaH = elements.calScreen.naturalHeight || cal.screen.height;
+    const box = containContentBox(elements.calScreen, mediaW, mediaH);
     elements.calMarkers.replaceChildren(...cal.points.map((point) => {
         const value = calValue(point.name);
         const marker = document.createElement('span');
         marker.className = `m${point.name in cal.overrides ? ' overridden' : ''}${cal.armed === point.name ? ' armed' : ''}`;
-        marker.style.left = `${(value.x / cal.screen.width) * 100}%`;
-        marker.style.top = `${(value.y / cal.screen.height) * 100}%`;
+        const left = box.elementWidth <= 0 ? 0
+            : ((box.left - elements.calScreen.getBoundingClientRect().left)
+                + (value.x / cal.screen.width) * box.width) / box.elementWidth * 100;
+        const top = box.elementHeight <= 0 ? 0
+            : ((box.top - elements.calScreen.getBoundingClientRect().top)
+                + (value.y / cal.screen.height) * box.height) / box.elementHeight * 100;
+        marker.style.left = `${left}%`;
+        marker.style.top = `${top}%`;
         marker.title = point.label;
         return marker;
     }));
@@ -713,24 +1146,29 @@ function renderCal() {
     renderCalPoints();
     renderCalMarkers();
 }
+async function loadCalibratePoints(app) {
+    const data = await jsonRequest(`/api/devices/${encodeURIComponent(udid)}/coordinates?app=${encodeURIComponent(app)}`);
+    cal.app = data.app;
+    cal.screen = data.screenSize;
+    cal.points = data.points;
+    cal.overrides = {};
+    for (const point of data.points)
+        if (point.overridden)
+            cal.overrides[point.name] = point.current;
+    cal.armed = undefined;
+    elements.calApp.value = data.app;
+    elements.calProfile.textContent = `${data.profile} · ${data.app === 'instagram' ? 'Instagram' : 'TikTok'}`;
+    renderCal();
+}
 async function openCalibrate() {
     elements.calStatus.textContent = 'Loading…';
     elements.calibrateDialog.showModal();
     try {
-        const data = await jsonRequest(`/api/devices/${encodeURIComponent(udid)}/coordinates`);
-        cal.screen = data.screenSize;
-        cal.points = data.points;
-        cal.overrides = {};
-        for (const point of data.points)
-            if (point.overridden)
-                cal.overrides[point.name] = point.current;
-        cal.armed = undefined;
         elements.calControl.checked = false;
         elements.calScreen.parentElement?.classList.remove('controlling');
-        elements.calProfile.textContent = data.profile;
+        await loadCalibratePoints(elements.calApp.value);
         elements.calScreen.src = `/api/devices/${encodeURIComponent(udid)}/remote/stream?t=${Date.now()}`;
         elements.calStatus.textContent = '';
-        renderCal();
     }
     catch (error) {
         elements.calStatus.textContent = errorMessage(error);
@@ -743,13 +1181,46 @@ function closeCalibrate() {
 elements.openCalibrate.addEventListener('click', () => void openCalibrate());
 elements.closeCalibrate.addEventListener('click', closeCalibrate);
 elements.calCancel.addEventListener('click', closeCalibrate);
+elements.calApp.addEventListener('change', () => {
+    if (!elements.calibrateDialog.open)
+        return;
+    elements.calStatus.textContent = 'Loading…';
+    void loadCalibratePoints(elements.calApp.value)
+        .then(() => { elements.calStatus.textContent = ''; })
+        .catch((error) => { elements.calStatus.textContent = errorMessage(error); });
+});
 elements.openTasks.addEventListener('click', () => {
     void loadDeviceTasks();
     elements.tasksDialog.showModal();
 });
 elements.closeTasks.addEventListener('click', () => elements.tasksDialog.close());
+elements.clearDeviceQueue.addEventListener('click', async () => {
+    if (!window.confirm('Cancel every queued job and stop every running automation on this device?'))
+        return;
+    elements.clearDeviceQueue.disabled = true;
+    elements.deviceQueueStatus.textContent = 'Clearing queue…';
+    try {
+        const result = await jsonRequest(`/api/devices/${encodeURIComponent(udid)}/queue/clear`, { method: 'POST' });
+        elements.deviceQueueStatus.textContent =
+            `Cleared ${result.cancelled} queued · stopping ${result.stopping} running`;
+        await loadDeviceTasks();
+        const activityResponse = await fetch(`/api/devices/${encodeURIComponent(udid)}/fragments/activity`);
+        if (activityResponse.ok) {
+            const html = await activityResponse.text();
+            const current = document.querySelector('#device-activity');
+            if (current)
+                current.outerHTML = html;
+        }
+    }
+    catch (error) {
+        elements.deviceQueueStatus.textContent = errorMessage(error);
+        elements.clearDeviceQueue.disabled = false;
+    }
+});
 elements.openAccounts.addEventListener('click', () => elements.accountsDialog.showModal());
 elements.closeAccounts.addEventListener('click', () => elements.accountsDialog.close());
+elements.openInstagramAccounts.addEventListener('click', () => elements.instagramAccountsDialog.showModal());
+elements.closeInstagramAccounts.addEventListener('click', () => elements.instagramAccountsDialog.close());
 elements.openPasscode.addEventListener('click', () => {
     elements.passcodeResult.textContent = '';
     elements.passcodeDialog.showModal();
@@ -768,11 +1239,9 @@ elements.calResetAll.addEventListener('click', () => {
     renderCal();
 });
 function calPointFromEvent(event) {
-    const rect = elements.calScreen.getBoundingClientRect();
-    return {
-        x: Math.round((event.clientX - rect.left) * cal.screen.width / rect.width),
-        y: Math.round((event.clientY - rect.top) * cal.screen.height / rect.height),
-    };
+    if (!cal.screen)
+        throw new Error('Calibration screen size is unavailable');
+    return pointFromContainedMedia(event, elements.calScreen, cal.screen);
 }
 async function calSendAction(action) {
     elements.calStatus.textContent = 'Sending input…';
@@ -829,10 +1298,13 @@ elements.calSave.addEventListener('click', async () => {
     elements.calSave.disabled = true;
     elements.calStatus.textContent = 'Saving…';
     try {
+        const body = cal.app === 'instagram'
+            ? { instagramCoordinates: cal.overrides }
+            : { coordinates: cal.overrides };
         await jsonRequest(`/api/devices/${encodeURIComponent(udid)}`, {
             method: 'PATCH',
             headers: { 'content-type': 'application/json' },
-            body: JSON.stringify({ coordinates: cal.overrides }),
+            body: JSON.stringify(body),
         });
         const count = Object.keys(cal.overrides).length;
         elements.calStatus.textContent = count ? `Saved ${count} override${count === 1 ? '' : 's'}.` : 'Cleared all overrides.';
@@ -899,11 +1371,151 @@ elements.removeDevice.addEventListener('click', async () => {
     }
 });
 updateDestination();
+updateInstagramDestination();
 updateDoomscrollSchedule();
+updateInstagramDoomscrollSchedule();
 updatePostSchedule();
+updateInstagramPostSchedule();
 setInterval(() => { if (elements.tasksDialog.open)
     void loadDeviceTasks(); }, 5_000);
 const loadedSummary = document.querySelector('#device-summary[data-screen-width]');
 if (loadedSummary)
     useDeviceSummary(loadedSummary);
+// --- Workflow train / following doomscroll ---------------------------------
+elements.trainToggle.addEventListener('click', () => {
+    setTrainRecording(!trainRecording);
+});
+elements.trainClear.addEventListener('click', () => {
+    trainEvents = [];
+    setTrainRecording(false);
+});
+elements.trainSave.addEventListener('click', () => {
+    if (trainEvents.length === 0)
+        return;
+    elements.trainSaveResult.textContent = '';
+    elements.trainWorkflowName.value = elements.trainWorkflowName.value || 'following-engage';
+    elements.trainSaveDialog.showModal();
+});
+elements.closeTrainSave.addEventListener('click', () => elements.trainSaveDialog.close());
+elements.cancelTrainSave.addEventListener('click', () => elements.trainSaveDialog.close());
+elements.trainSaveForm.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    elements.trainSaveResult.textContent = 'Saving…';
+    try {
+        await jsonRequest(`/api/devices/${encodeURIComponent(udid)}/tiktok/workflows`, {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({
+                name: elements.trainWorkflowName.value.trim(),
+                events: trainEvents,
+                meta: { feed: elements.trainWorkflowFeed.value, source: 'recording' },
+            }),
+        });
+        elements.trainSaveResult.textContent = 'Saved.';
+        trainEvents = [];
+        setTrainRecording(false);
+        elements.trainSaveDialog.close();
+        await loadWorkflows();
+    }
+    catch (error) {
+        elements.trainSaveResult.textContent = errorMessage(error);
+    }
+});
+async function loadWorkflows() {
+    elements.workflowList.classList.add('loading-card');
+    elements.workflowList.innerHTML = '<span class="spinner" aria-hidden="true"></span>Loading workflows…';
+    try {
+        const data = await jsonRequest(`/api/devices/${encodeURIComponent(udid)}/tiktok/workflows`);
+        const workflows = data.workflows ?? [];
+        if (workflows.length === 0) {
+            elements.workflowList.classList.remove('loading-card');
+            elements.workflowList.textContent = 'No trained workflows yet. Use Train workflow on the live screen.';
+            return;
+        }
+        elements.workflowList.classList.remove('loading-card');
+        elements.workflowList.innerHTML = '';
+        for (const workflow of workflows) {
+            const row = document.createElement('div');
+            row.className = 'task-row';
+            row.innerHTML = `<div><strong>${workflow.name}</strong><div class="run-meta">${workflow.steps.length} steps · ${new Date(workflow.createdAt).toLocaleString()}</div></div>`;
+            const actions = document.createElement('div');
+            actions.className = 'inline-actions';
+            const replay = document.createElement('button');
+            replay.type = 'button';
+            replay.className = 'button secondary';
+            replay.textContent = 'Replay 5m';
+            replay.addEventListener('click', async () => {
+                replay.disabled = true;
+                try {
+                    const form = new FormData();
+                    form.set('workflowId', workflow.id);
+                    form.set('durationMinutes', '5');
+                    const response = await fetch(`/api/devices/${encodeURIComponent(udid)}/fragments/workflow-replay-run`, {
+                        method: 'POST',
+                        body: form,
+                    });
+                    if (!response.ok)
+                        throw new Error(`Replay failed (${response.status})`);
+                    const html = await response.text();
+                    const activity = document.querySelector('#device-activity');
+                    if (activity)
+                        activity.outerHTML = html;
+                }
+                catch (error) {
+                    setStatus(errorMessage(error), 'error');
+                }
+                finally {
+                    replay.disabled = false;
+                }
+            });
+            const remove = document.createElement('button');
+            remove.type = 'button';
+            remove.className = 'button secondary';
+            remove.textContent = 'Delete';
+            remove.addEventListener('click', async () => {
+                if (!confirm(`Delete workflow “${workflow.name}”?`))
+                    return;
+                await jsonRequest(`/api/devices/${encodeURIComponent(udid)}/tiktok/workflows/${encodeURIComponent(workflow.id)}`, {
+                    method: 'DELETE',
+                });
+                await loadWorkflows();
+            });
+            actions.append(replay, remove);
+            row.append(actions);
+            elements.workflowList.append(row);
+        }
+    }
+    catch (error) {
+        elements.workflowList.classList.remove('loading-card');
+        elements.workflowList.textContent = errorMessage(error);
+    }
+}
+elements.refreshWorkflows.addEventListener('click', () => { void loadWorkflows(); });
+void loadWorkflows();
+elements.openFollowingDoomscroll.addEventListener('click', () => elements.followingDoomscrollDialog.showModal());
+elements.closeFollowingDoomscroll.addEventListener('click', () => elements.followingDoomscrollDialog.close());
+elements.cancelFollowingDoomscroll.addEventListener('click', () => elements.followingDoomscrollDialog.close());
+elements.followingDoomscrollDurationButtons.forEach((button) => {
+    button.addEventListener('click', () => {
+        elements.followingDoomscrollDuration.value = button.dataset.followingDoomscrollDuration ?? '5';
+    });
+});
+elements.followingCommentEnabled.addEventListener('change', () => {
+    elements.followingCommentText.disabled = !elements.followingCommentEnabled.checked;
+    if (elements.followingCommentEnabled.checked && !elements.followingCommentText.value.trim()) {
+        elements.followingCommentText.value = '🔥';
+    }
+});
+elements.followingDoomscrollForm.addEventListener('htmx:afterRequest', ((event) => {
+    const detail = event.detail;
+    if (detail.successful) {
+        elements.followingDoomscrollResult.textContent = 'Started.';
+        elements.followingDoomscrollDialog.close();
+    }
+    else {
+        elements.followingDoomscrollResult.textContent = detail.xhr?.responseText
+            ? 'Could not start — check Activity.'
+            : 'Request failed.';
+    }
+}));
 export {};

@@ -7,6 +7,16 @@ function shortDevice(udid) {
 function date(value) {
     return value ? new Date(value).toLocaleString() : '—';
 }
+function pluginLabel(pluginId) {
+    if (pluginId === 'com.git-agni.instagram')
+        return 'Instagram';
+    if (pluginId === 'com.git-agni.tiktok')
+        return 'TikTok';
+    return pluginId.replace(/^com\.git-agni\./, '');
+}
+function taskLabel(pluginId, taskType) {
+    return `${pluginLabel(pluginId)} ${taskType}`;
+}
 async function request(url, options) {
     const response = await fetch(url, options);
     const body = await response.json();
@@ -36,7 +46,7 @@ function renderSchedules(items) {
         row.className = 'task-row';
         const copy = document.createElement('div');
         const title = document.createElement('h3');
-        title.textContent = `${schedule.taskType} · ${shortDevice(schedule.deviceUdid)}`;
+        title.textContent = `${taskLabel(schedule.pluginId, schedule.taskType)} · ${shortDevice(schedule.deviceUdid)}`;
         const meta = document.createElement('p');
         meta.textContent = `${schedule.timing.kind} · next ${date(schedule.nextRunAt)}`;
         copy.append(title, meta);
@@ -86,7 +96,7 @@ function renderExecutions(items) {
         row.className = 'task-row';
         const copy = document.createElement('div');
         const title = document.createElement('h3');
-        title.textContent = `${execution.taskType} · ${shortDevice(execution.deviceUdid)}`;
+        title.textContent = `${taskLabel(execution.pluginId, execution.taskType)} · ${shortDevice(execution.deviceUdid)}`;
         const meta = document.createElement('p');
         meta.textContent = `${date(execution.scheduledFor)}${execution.error ? ` · ${execution.error}` : ''}`;
         copy.append(title, meta);
@@ -103,7 +113,8 @@ function renderExecutions(items) {
         }
         if (execution.status === 'failed' || execution.status === 'stopped') {
             actions.append(button('Retry', async () => {
-                if (execution.taskType === 'post' && !window.confirm('The post may already have reached TikTok. Retry only after checking the device.'))
+                if (execution.taskType === 'post'
+                    && !window.confirm(`The post may already have reached ${pluginLabel(execution.pluginId)}. Retry only after checking the device.`))
                     return;
                 await request(`/api/executions/${execution.id}/retry`, { method: 'POST' });
                 await load();

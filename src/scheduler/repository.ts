@@ -185,9 +185,7 @@ export class SchedulerRepository {
             const queued = await this.connection.db.select().from(executions).where(and(
                 eq(executions.scheduleId, id), eq(executions.status, 'queued'),
             ));
-            for (const execution of queued) {
-                if (execution.queueJobId) await this.boss.cancel(queueNameForDevice(execution.deviceUdid), execution.queueJobId);
-            }
+            for (const execution of queued) await this.cancelQueuedJob(execution);
             await this.connection.db.update(executions).set({ status: 'cancelled', finishedAt: now, updatedAt: now })
                 .where(and(eq(executions.scheduleId, id), eq(executions.status, 'queued')));
             await this.purgeScheduleAssetsIfIdle(id);
@@ -281,7 +279,7 @@ export class SchedulerRepository {
         const [execution] = await this.connection.db.select().from(executions).where(eq(executions.id, id)).limit(1);
         if (!execution) return 'not-found';
         if (execution.status === 'queued') {
-            if (execution.queueJobId) await this.boss.cancel(queueNameForDevice(execution.deviceUdid), execution.queueJobId);
+            await this.cancelQueuedJob(execution);
             await this.finishExecution(id, 'cancelled', null, 'Cancelled before execution');
             return 'queued';
         }
@@ -296,6 +294,49 @@ export class SchedulerRepository {
         await this.connection.db.update(executions).set({ stopRequestedAt: new Date(), updatedAt: new Date() })
             .where(eq(executions.id, id));
         return 'running';
+    }
+
+    /**
+     * Cancel every queued job for a device and request stop on every running one.
+     * Used by the device-page Clear queue control so operators are not stuck
+     * cancelling one-by-one while Start silently stacks behind a backlog.
+     */
+    async clearDeviceQueue(
+        deviceUdid: string,
+        filter: { pluginId?: string; taskType?: string; onlyQueued?: boolean } = {},
+    ): Promise<{ cancelled: number; stopping: number }> {
+        const pending = await this.connection.db.select().from(executions).where(and(
+            eq(executions.deviceUdid, deviceUdid),
+            inArray(executions.status, filter.onlyQueued ? ['queued'] : ['queued', 'running']),
+        ));
+        let cancelled = 0;
+        let stopping = 0;
+        for (const execution of pending) {
+            if (filter.pluginId && execution.pluginId !== filter.pluginId) continue;
+            if (filter.taskType && execution.taskType !== filter.taskType) continue;
+            if (execution.status === 'queued') {
+                await this.cancelQueuedJob(execution);
+                await this.finishExecution(execution.id, 'cancelled', null, 'Cleared from device queue');
+                cancelled += 1;
+                continue;
+            }
+            const result = await this.requestStop(execution.id);
+            if (result === 'running') stopping += 1;
+            else if (result === 'queued') cancelled += 1;
+        }
+        return { cancelled, stopping };
+    }
+
+    private async cancelQueuedJob(execution: ExecutionRow): Promise<void> {
+        if (!execution.queueJobId) return;
+        try {
+            await this.boss.cancel(queueNameForDevice(execution.deviceUdid), execution.queueJobId);
+        } catch (error) {
+            console.error(
+                `pg-boss cancel failed for ${execution.id}:`,
+                error instanceof Error ? error.message : error,
+            );
+        }
     }
 
     async retryExecution(id: string, now = new Date()): Promise<ExecutionRow | null> {

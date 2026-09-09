@@ -7,19 +7,53 @@ import { pipeline } from 'node:stream/promises';
 
 import type { PhoneFarmPlugin, TaskDefinition, TaskExecutionContext } from './plugin.js';
 import type { JsonObject, JsonValue, ScheduleTiming } from './types.js';
+import {
+    resolveDeviceCoordinates,
+} from './devices/coordinates.js';
+import {
+    createWorkflowPattern,
+    listWorkflowsFromPluginData,
+    parseRecordedEvents,
+    parseWorkflowPattern,
+    parseWorkflowStep,
+    replaceWorkflowsInPluginData,
+    type WorkflowPattern,
+    type WorkflowTimedStep,
+} from './tiktok/workflows.js';
 
 export interface TikTokPluginConfiguration {
     doomscrollEntrypoint?: string;
+    doomscrollFollowingEntrypoint?: string;
+    workflowReplayEntrypoint?: string;
     postEntrypoint?: string;
     bundleId?: string;
 }
 
 type DoomscrollPayload = JsonObject & {
     durationMinutes: number;
-    personality: 'skimmer' | 'casual' | 'engaged';
+    personality: 'skimmer' | 'casual' | 'engaged' | 'dialed';
     likeEnabled: boolean;
     saveEnabled: boolean;
+    commentEnabled?: boolean;
+    commentText?: string;
     account?: string;
+};
+
+type FollowingDoomscrollPayload = JsonObject & {
+    durationMinutes: number;
+    personality: 'skimmer' | 'casual' | 'engaged' | 'dialed';
+    likeEnabled: boolean;
+    saveEnabled: boolean;
+    commentEnabled: boolean;
+    commentText?: string;
+    account?: string;
+};
+
+type WorkflowReplayPayload = JsonObject & {
+    workflowId: string;
+    durationMinutes?: number;
+    loops?: number;
+    commentText?: string;
 };
 
 type PostMedia = JsonObject & {
@@ -58,15 +92,22 @@ function createDoomscrollTask(configuration: TikTokPluginConfiguration): TaskDef
             if (!Number.isInteger(durationMinutes) || typeof durationMinutes !== 'number' || durationMinutes < 1 || durationMinutes > 180) {
                 throw new Error('durationMinutes must be between 1 and 180');
             }
-            if (personality !== 'skimmer' && personality !== 'casual' && personality !== 'engaged') {
+            if (personality !== 'skimmer' && personality !== 'casual' && personality !== 'engaged' && personality !== 'dialed') {
                 throw new Error('Invalid personality');
             }
             if (typeof input.likeEnabled !== 'boolean' || typeof input.saveEnabled !== 'boolean') {
                 throw new Error('Engagement settings must be boolean');
             }
+            const commentEnabled = typeof input.commentEnabled === 'boolean' ? input.commentEnabled : false;
+            const commentText = optionalString(input.commentText, 'commentText');
+            if (commentEnabled && !commentText?.trim()) {
+                throw new Error('commentText is required when commentEnabled is true');
+            }
             const account = optionalString(input.account, 'account');
             return {
                 durationMinutes, personality, likeEnabled: input.likeEnabled, saveEnabled: input.saveEnabled,
+                commentEnabled,
+                ...(commentText ? { commentText } : {}),
                 ...(account ? { account } : {}),
             };
         },
@@ -83,7 +124,119 @@ function createDoomscrollTask(configuration: TikTokPluginConfiguration): TaskDef
                 DOOMSCROLL_PERSONALITY: payload.personality,
                 DOOMSCROLL_LIKE_ENABLED: String(payload.likeEnabled),
                 DOOMSCROLL_SAVE_ENABLED: String(payload.saveEnabled),
+                DOOMSCROLL_COMMENT_ENABLED: String(payload.commentEnabled ?? false),
+                ...(payload.commentText ? { DOOMSCROLL_COMMENT_TEXT: payload.commentText } : {}),
                 ...(payload.account ? { TIKTOK_SWITCH_ACCOUNT: payload.account } : {}),
+            },
+        }),
+    };
+}
+
+function createFollowingDoomscrollTask(configuration: TikTokPluginConfiguration): TaskDefinition<FollowingDoomscrollPayload> {
+    return {
+        type: 'doomscroll-following', version: 1, displayName: 'TikTok doomscroll following',
+        validate(value) {
+            const input = objectPayload(value);
+            const durationMinutes = input.durationMinutes;
+            const personality = input.personality;
+            if (!Number.isInteger(durationMinutes) || typeof durationMinutes !== 'number' || durationMinutes < 1 || durationMinutes > 180) {
+                throw new Error('durationMinutes must be between 1 and 180');
+            }
+            if (personality !== 'skimmer' && personality !== 'casual' && personality !== 'engaged' && personality !== 'dialed') {
+                throw new Error('Invalid personality');
+            }
+            if (typeof input.likeEnabled !== 'boolean' || typeof input.saveEnabled !== 'boolean') {
+                throw new Error('Engagement settings must be boolean');
+            }
+            if (typeof input.commentEnabled !== 'boolean') {
+                throw new Error('commentEnabled must be boolean');
+            }
+            const account = optionalString(input.account, 'account');
+            const commentText = optionalString(input.commentText, 'commentText');
+            if (commentText && commentText.length > 150) throw new Error('commentText must be 150 characters or fewer');
+            if (input.commentEnabled && !commentText?.trim()) {
+                throw new Error('commentText is required when commentEnabled is true');
+            }
+            return {
+                durationMinutes, personality, likeEnabled: input.likeEnabled, saveEnabled: input.saveEnabled,
+                commentEnabled: input.commentEnabled,
+                ...(commentText ? { commentText } : {}),
+                ...(account ? { account } : {}),
+            };
+        },
+        summarize: (payload) => `Following · ${payload.personality} · ${payload.durationMinutes} min`,
+        estimateDurationMs: (payload) => payload.durationMinutes * 60_000,
+        retryPolicy: () => ({ retryLimit: 2, retryDelaySeconds: 60, retryBackoff: true }),
+        supportsStop: () => true,
+        execute: (context, payload) => context.runProcess({
+            entrypoint: configuration.doomscrollFollowingEntrypoint
+                ?? fileURLToPath(new URL('./tiktok/doomscroll-following.ts', import.meta.url)),
+            env: {
+                IOS_UDID: context.device.udid,
+                TIKTOK_BUNDLE_ID: configuration.bundleId ?? 'com.zhiliaoapp.musically',
+                DOOMSCROLL_DURATION_MINUTES: String(payload.durationMinutes),
+                DOOMSCROLL_PERSONALITY: payload.personality,
+                DOOMSCROLL_LIKE_ENABLED: String(payload.likeEnabled),
+                DOOMSCROLL_SAVE_ENABLED: String(payload.saveEnabled),
+                DOOMSCROLL_COMMENT_ENABLED: String(payload.commentEnabled),
+                ...(payload.commentText ? { DOOMSCROLL_COMMENT_TEXT: payload.commentText } : {}),
+                ...(payload.account ? { TIKTOK_SWITCH_ACCOUNT: payload.account } : {}),
+            },
+        }),
+    };
+}
+
+function createWorkflowReplayTask(configuration: TikTokPluginConfiguration): TaskDefinition<WorkflowReplayPayload> {
+    return {
+        type: 'workflow-replay', version: 1, displayName: 'TikTok workflow replay',
+        validate(value) {
+            const input = objectPayload(value);
+            if (typeof input.workflowId !== 'string' || !input.workflowId.trim()) {
+                throw new Error('workflowId is required');
+            }
+            const durationMinutes = input.durationMinutes;
+            const loops = input.loops;
+            if (durationMinutes !== undefined) {
+                if (!Number.isInteger(durationMinutes) || typeof durationMinutes !== 'number'
+                    || durationMinutes < 1 || durationMinutes > 180) {
+                    throw new Error('durationMinutes must be between 1 and 180');
+                }
+            }
+            if (loops !== undefined) {
+                if (!Number.isInteger(loops) || typeof loops !== 'number' || loops < 1 || loops > 500) {
+                    throw new Error('loops must be between 1 and 500');
+                }
+            }
+            if (durationMinutes === undefined && loops === undefined) {
+                throw new Error('Provide durationMinutes or loops');
+            }
+            const commentText = optionalString(input.commentText, 'commentText');
+            if (commentText && commentText.length > 150) throw new Error('commentText must be 150 characters or fewer');
+            return {
+                workflowId: input.workflowId.trim(),
+                ...(durationMinutes !== undefined ? { durationMinutes } : {}),
+                ...(loops !== undefined ? { loops } : {}),
+                ...(commentText ? { commentText } : {}),
+            };
+        },
+        summarize: (payload) => payload.durationMinutes
+            ? `Replay · ${payload.durationMinutes} min`
+            : `Replay · ${payload.loops} loops`,
+        estimateDurationMs: (payload) => (payload.durationMinutes ?? Math.min(payload.loops ?? 1, 30)) * 60_000,
+        retryPolicy: () => ({ retryLimit: 1, retryDelaySeconds: 30, retryBackoff: true }),
+        supportsStop: () => true,
+        execute: (context, payload) => context.runProcess({
+            entrypoint: configuration.workflowReplayEntrypoint
+                ?? fileURLToPath(new URL('./tiktok/workflow-replay.ts', import.meta.url)),
+            env: {
+                IOS_UDID: context.device.udid,
+                TIKTOK_BUNDLE_ID: configuration.bundleId ?? 'com.zhiliaoapp.musically',
+                WORKFLOW_ID: payload.workflowId,
+                ...(payload.durationMinutes !== undefined
+                    ? { WORKFLOW_DURATION_MINUTES: String(payload.durationMinutes) }
+                    : {}),
+                ...(payload.loops !== undefined ? { WORKFLOW_LOOPS: String(payload.loops) } : {}),
+                ...(payload.commentText ? { WORKFLOW_COMMENT_TEXT: payload.commentText } : {}),
             },
         }),
     };
@@ -155,13 +308,256 @@ export function createTikTokPlugin(configuration: TikTokPluginConfiguration = {}
         id: 'com.git-agni.tiktok',
         version: '0.1.0',
         displayName: 'TikTok automation',
-        tasks: [createDoomscrollTask(configuration), createPostTask(configuration)],
+        tasks: [
+            createDoomscrollTask(configuration),
+            createFollowingDoomscrollTask(configuration),
+            createWorkflowReplayTask(configuration),
+            createPostTask(configuration),
+        ],
         devicePanels: [{
             id: 'tiktok-controls', title: 'TikTok',
             fragmentPath: fileURLToPath(new URL('../static/tiktok/device-panel.html', import.meta.url)), order: 100,
         }],
         async registerRoutes(context) {
             const deviceData = async (udid: string) => (await context.loadDevices()).find((device) => device.udid === udid);
+            const tiktokPluginData = (device: { pluginData: Record<string, JsonObject | undefined> }) => (
+                device.pluginData['com.git-agni.tiktok'] ?? {}
+            );
+
+            context.app.get<{ Params: { udid: string } }>('/api/devices/:udid/tiktok/workflows', async (request, reply) => {
+                const device = await deviceData(request.params.udid);
+                if (!device) return reply.code(404).send({ error: 'Device is not registered' });
+                return { workflows: listWorkflowsFromPluginData(tiktokPluginData(device) as Record<string, unknown>) };
+            });
+
+            context.app.post<{
+                Params: { udid: string };
+                Body: { name?: string; events?: unknown; steps?: unknown; meta?: WorkflowPattern['meta'] };
+            }>('/api/devices/:udid/tiktok/workflows', async (request, reply) => {
+                const device = await deviceData(request.params.udid);
+                if (!device) return reply.code(404).send({ error: 'Device is not registered' });
+                try {
+                    const coords = resolveDeviceCoordinates(
+                        device.coordinateProfile,
+                        device.coordinates,
+                    ).tiktok;
+                    const body = request.body;
+                    const name = typeof body.name === 'string' ? body.name : '';
+                    let pattern: WorkflowPattern;
+                    if (Array.isArray(body.steps)) {
+                        const steps = body.steps.map((item, index) => {
+                            if (!item || typeof item !== 'object' || Array.isArray(item)) {
+                                throw new Error(`steps[${index}] must be an object`);
+                            }
+                            const timed = item as Record<string, unknown>;
+                            if (typeof timed.t !== 'number') throw new Error(`steps[${index}].t must be a number`);
+                            return { t: Math.round(timed.t), step: parseWorkflowStep(timed.step) };
+                        }) as WorkflowTimedStep[];
+                        pattern = createWorkflowPattern({ name, events: [], coords, steps, meta: body.meta });
+                    } else {
+                        pattern = createWorkflowPattern({
+                            name,
+                            events: parseRecordedEvents(body.events),
+                            coords,
+                            meta: body.meta,
+                        });
+                    }
+                    await context.mutateDevices((devices) => {
+                        const target = devices.find(({ udid }) => udid === request.params.udid);
+                        if (!target) return false;
+                        const current = listWorkflowsFromPluginData(
+                            (target.pluginData['com.git-agni.tiktok'] ?? {}) as Record<string, unknown>,
+                        );
+                        target.pluginData = {
+                            ...target.pluginData,
+                            'com.git-agni.tiktok': replaceWorkflowsInPluginData(
+                                target.pluginData['com.git-agni.tiktok'] as Record<string, unknown> | undefined,
+                                [...current, pattern],
+                            ) as JsonObject,
+                        };
+                        return true;
+                    });
+                    return reply.code(201).send(pattern);
+                } catch (error) {
+                    return reply.code(400).send({ error: error instanceof Error ? error.message : String(error) });
+                }
+            });
+
+            context.app.get<{ Params: { udid: string; id: string } }>(
+                '/api/devices/:udid/tiktok/workflows/:id',
+                async (request, reply) => {
+                    const device = await deviceData(request.params.udid);
+                    if (!device) return reply.code(404).send({ error: 'Device is not registered' });
+                    const workflow = listWorkflowsFromPluginData(tiktokPluginData(device) as Record<string, unknown>)
+                        .find(({ id }) => id === request.params.id);
+                    if (!workflow) return reply.code(404).send({ error: 'Workflow not found' });
+                    return workflow;
+                },
+            );
+
+            context.app.patch<{
+                Params: { udid: string; id: string };
+                Body: { name?: string; steps?: unknown; meta?: WorkflowPattern['meta'] };
+            }>('/api/devices/:udid/tiktok/workflows/:id', async (request, reply) => {
+                const device = await deviceData(request.params.udid);
+                if (!device) return reply.code(404).send({ error: 'Device is not registered' });
+                try {
+                    let updated: WorkflowPattern | undefined;
+                    const found = await context.mutateDevices((devices) => {
+                        const target = devices.find(({ udid }) => udid === request.params.udid);
+                        if (!target) return false;
+                        const current = listWorkflowsFromPluginData(
+                            (target.pluginData['com.git-agni.tiktok'] ?? {}) as Record<string, unknown>,
+                        );
+                        const index = current.findIndex(({ id }) => id === request.params.id);
+                        if (index < 0) return false;
+                        const existing = current[index]!;
+                        const name = request.body.name !== undefined
+                            ? String(request.body.name).trim()
+                            : existing.name;
+                        if (!name) throw new Error('Workflow name is required');
+                        const steps = request.body.steps !== undefined
+                            ? (request.body.steps as unknown[]).map((item, i) => {
+                                if (!item || typeof item !== 'object' || Array.isArray(item)) {
+                                    throw new Error(`steps[${i}] must be an object`);
+                                }
+                                const timed = item as Record<string, unknown>;
+                                if (typeof timed.t !== 'number') throw new Error(`steps[${i}].t must be a number`);
+                                return { t: Math.round(timed.t), step: parseWorkflowStep(timed.step) };
+                            })
+                            : existing.steps;
+                        updated = parseWorkflowPattern({
+                            ...existing,
+                            name,
+                            steps,
+                            ...(request.body.meta !== undefined ? { meta: request.body.meta } : {}),
+                        });
+                        const next = [...current];
+                        next[index] = updated;
+                        target.pluginData = {
+                            ...target.pluginData,
+                            'com.git-agni.tiktok': replaceWorkflowsInPluginData(
+                                target.pluginData['com.git-agni.tiktok'] as Record<string, unknown> | undefined,
+                                next,
+                            ) as JsonObject,
+                        };
+                        return true;
+                    });
+                    if (!found || !updated) return reply.code(404).send({ error: 'Workflow not found' });
+                    return updated;
+                } catch (error) {
+                    return reply.code(400).send({ error: error instanceof Error ? error.message : String(error) });
+                }
+            });
+
+            context.app.delete<{ Params: { udid: string; id: string } }>(
+                '/api/devices/:udid/tiktok/workflows/:id',
+                async (request, reply) => {
+                    const found = await context.mutateDevices((devices) => {
+                        const target = devices.find(({ udid }) => udid === request.params.udid);
+                        if (!target) return false;
+                        const current = listWorkflowsFromPluginData(
+                            (target.pluginData['com.git-agni.tiktok'] ?? {}) as Record<string, unknown>,
+                        );
+                        const next = current.filter(({ id }) => id !== request.params.id);
+                        if (next.length === current.length) return false;
+                        target.pluginData = {
+                            ...target.pluginData,
+                            'com.git-agni.tiktok': replaceWorkflowsInPluginData(
+                                target.pluginData['com.git-agni.tiktok'] as Record<string, unknown> | undefined,
+                                next,
+                            ) as JsonObject,
+                        };
+                        return true;
+                    });
+                    if (!found) return reply.code(404).send({ error: 'Workflow not found' });
+                    return reply.code(204).send();
+                },
+            );
+
+            context.app.post<{ Params: { udid: string }; Body: Record<string, string> }>(
+                '/api/devices/:udid/fragments/following-scroll-run', async (request, reply) => {
+                    const device = await deviceData(request.params.udid);
+                    if (!device) return reply.code(404).send({ error: 'Device is not registered' });
+                    if (device.disabled) {
+                        return reply.code(409).send({ error: 'This device is disconnected — reconnect it before scheduling automation' });
+                    }
+                    const body = request.body;
+                    const kind = body.scheduleKind ?? 'now';
+                    const timing: ScheduleTiming = kind === 'now' ? { kind: 'now' }
+                        : kind === 'once' ? { kind: 'once', runAt: body.runAt ?? '' }
+                            : kind === 'daily' ? { kind: 'daily', localTime: body.localTime ?? '', timezone: body.timezone ?? 'UTC' }
+                                : { kind: 'weekly', localTime: body.localTime ?? '', timezone: body.timezone ?? 'UTC', weekdays: (body.weekdays ?? '').split(',').filter(Boolean).map(Number) };
+                    try {
+                        if (kind === 'now') {
+                            const recent = await context.scheduler.listExecutions(50, device.udid);
+                            const mine = recent.filter(({ pluginId, taskType }) => (
+                                pluginId === 'com.git-agni.tiktok' && taskType === 'doomscroll-following'
+                            ));
+                            if (mine.some(({ status }) => status === 'running')) {
+                                throw new Error('A Following doomscroll is already running on this device. Stop it from Activity, then start again.');
+                            }
+                            await context.scheduler.clearDeviceQueue(device.udid, {
+                                pluginId: 'com.git-agni.tiktok',
+                                taskType: 'doomscroll-following',
+                                onlyQueued: true,
+                            });
+                        }
+                        await context.scheduler.createTask({
+                            deviceUdid: device.udid,
+                            task: {
+                                pluginId: 'com.git-agni.tiktok', taskType: 'doomscroll-following', taskVersion: 1,
+                                payload: {
+                                    durationMinutes: Number(body.durationMinutes),
+                                    personality: body.personality,
+                                    likeEnabled: body.likeEnabled === 'on',
+                                    saveEnabled: body.saveEnabled === 'on',
+                                    commentEnabled: body.commentEnabled === 'on',
+                                    ...(body.commentText?.trim() ? { commentText: body.commentText.trim() } : {}),
+                                    ...(body.account?.trim() ? { account: body.account.trim() } : {}),
+                                },
+                            },
+                            timing,
+                            runWindowMinutes: body.runWindowMinutes ? Number(body.runWindowMinutes) : undefined,
+                        }, device.pluginData['com.git-agni.tiktok'] ?? {});
+                        return reply.code(202).type('text/html').send(await context.renderActivity(device.udid));
+                    } catch (error) {
+                        const message = error instanceof Error ? error.message : String(error);
+                        return reply.code(409).type('text/html').send(await context.renderActivity(device.udid, message));
+                    }
+                },
+            );
+
+            context.app.post<{ Params: { udid: string }; Body: Record<string, string> }>(
+                '/api/devices/:udid/fragments/workflow-replay-run', async (request, reply) => {
+                    const device = await deviceData(request.params.udid);
+                    if (!device) return reply.code(404).send({ error: 'Device is not registered' });
+                    if (device.disabled) {
+                        return reply.code(409).send({ error: 'This device is disconnected — reconnect it before scheduling automation' });
+                    }
+                    const body = request.body;
+                    try {
+                        await context.scheduler.createTask({
+                            deviceUdid: device.udid,
+                            task: {
+                                pluginId: 'com.git-agni.tiktok', taskType: 'workflow-replay', taskVersion: 1,
+                                payload: {
+                                    workflowId: body.workflowId ?? '',
+                                    ...(body.durationMinutes ? { durationMinutes: Number(body.durationMinutes) } : {}),
+                                    ...(body.loops ? { loops: Number(body.loops) } : {}),
+                                    ...(body.commentText?.trim() ? { commentText: body.commentText.trim() } : {}),
+                                },
+                            },
+                            timing: { kind: 'now' },
+                        }, device.pluginData['com.git-agni.tiktok'] ?? {});
+                        return reply.code(202).type('text/html').send(await context.renderActivity(device.udid));
+                    } catch (error) {
+                        const message = error instanceof Error ? error.message : String(error);
+                        return reply.code(409).type('text/html').send(await context.renderActivity(device.udid, message));
+                    }
+                },
+            );
+
             context.app.patch<{ Params: { udid: string }; Body: { accounts?: string[] } }>('/api/devices/:udid/accounts', async (request, reply) => {
                 if (!Array.isArray(request.body.accounts)) return reply.code(400).send({ error: 'accounts must be an array' });
                 const accounts = [...new Set(request.body.accounts.map((value) => value.trim()).filter(Boolean)
@@ -191,6 +587,20 @@ export function createTikTokPlugin(configuration: TikTokPluginConfiguration = {}
                             : kind === 'daily' ? { kind: 'daily', localTime: body.localTime ?? '', timezone: body.timezone ?? 'UTC' }
                                 : { kind: 'weekly', localTime: body.localTime ?? '', timezone: body.timezone ?? 'UTC', weekdays: (body.weekdays ?? '').split(',').filter(Boolean).map(Number) };
                     try {
+                        if (kind === 'now') {
+                            const recent = await context.scheduler.listExecutions(50, device.udid);
+                            const mine = recent.filter(({ pluginId, taskType }) => (
+                                pluginId === 'com.git-agni.tiktok' && taskType === 'doomscroll'
+                            ));
+                            if (mine.some(({ status }) => status === 'running')) {
+                                throw new Error('A TikTok doomscroll is already running on this device. Stop it from Activity, then start again.');
+                            }
+                            await context.scheduler.clearDeviceQueue(device.udid, {
+                                pluginId: 'com.git-agni.tiktok',
+                                taskType: 'doomscroll',
+                                onlyQueued: true,
+                            });
+                        }
                         await context.scheduler.createTask({
                             deviceUdid: device.udid,
                             task: {
@@ -198,6 +608,8 @@ export function createTikTokPlugin(configuration: TikTokPluginConfiguration = {}
                                 payload: {
                                     durationMinutes: Number(body.durationMinutes), personality: body.personality,
                                     likeEnabled: body.likeEnabled === 'on', saveEnabled: body.saveEnabled === 'on',
+                                    commentEnabled: body.commentEnabled === 'on',
+                                    ...(body.commentText?.trim() ? { commentText: body.commentText.trim() } : {}),
                                     ...(body.account?.trim() ? { account: body.account.trim() } : {}),
                                 },
                             },
@@ -206,7 +618,8 @@ export function createTikTokPlugin(configuration: TikTokPluginConfiguration = {}
                         }, device.pluginData['com.git-agni.tiktok'] ?? {});
                         return reply.code(202).type('text/html').send(await context.renderActivity(device.udid));
                     } catch (error) {
-                        return reply.type('text/html').send(await context.renderActivity(device.udid, error instanceof Error ? error.message : String(error)));
+                        const message = error instanceof Error ? error.message : String(error);
+                        return reply.code(409).type('text/html').send(await context.renderActivity(device.udid, message));
                     }
                 },
             );

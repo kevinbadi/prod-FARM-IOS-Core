@@ -20,6 +20,10 @@ export function diagnoseWdaLaunchFailure(output: string): string | undefined {
     if (/No signing certificate|signing certificate.*not found|requires a development team/i.test(output)) {
         return 'Sign in under Xcode Settings > Accounts and install an Apple Development signing certificate';
     }
+    if (/doesn.?t match .+ deployment target|deployment target/i.test(output)
+        && /iOS \d/i.test(output)) {
+        return 'IOS_PLATFORM_VERSION in .env is higher than this phone\'s iOS — set it to the oldest device OS in the farm (or lower)';
+    }
     if (/iOS .* is not installed|platform.*not installed|Ineligible destinations/i.test(output)) {
         return 'Install the matching iOS platform support from Xcode Settings > Components';
     }

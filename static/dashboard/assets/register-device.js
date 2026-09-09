@@ -8,6 +8,7 @@ const form = document.querySelector('#registration-details');
 const nameInput = document.querySelector('#registration-name');
 const profileInput = document.querySelector('#registration-profile');
 const accountsInput = document.querySelector('#registration-accounts');
+const instagramAccountsInput = document.querySelector('#registration-instagram-accounts');
 const passcodeInput = document.querySelector('#registration-passcode');
 const ports = document.querySelector('#registration-ports');
 const checks = document.querySelector('#registration-checks');
@@ -87,6 +88,8 @@ function render(snapshot) {
     }
     if (document.activeElement !== accountsInput)
         accountsInput.value = snapshot.tiktokAccounts.join(', ');
+    if (document.activeElement !== instagramAccountsInput)
+        instagramAccountsInput.value = (snapshot.instagramAccounts ?? []).join(', ');
     passcodeInput.placeholder = snapshot.hasPasscode ? 'Passcode saved in this setup session' : 'Optional numeric passcode';
     ports.textContent = `WDA ${snapshot.wdaLocalPort} · video ${snapshot.mjpegLocalPort}`;
     checks.replaceChildren(...Object.entries(snapshot.checks).map(([key, value]) => {
@@ -170,7 +173,9 @@ form.addEventListener('submit', async (event) => {
         const snapshot = await request(`/api/device-registrations/${encodeURIComponent(currentId)}`, {
             method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify({
                 name: nameInput.value, coordinateProfile: profileInput.value,
-                tiktokAccounts: accountsInput.value.split(','), passcode: passcodeInput.value || undefined,
+                tiktokAccounts: accountsInput.value.split(','),
+                instagramAccounts: instagramAccountsInput.value.split(','),
+                passcode: passcodeInput.value || undefined,
             }),
         });
         passcodeInput.value = '';

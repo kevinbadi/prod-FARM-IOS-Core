@@ -16,10 +16,10 @@ function snapshot(): RegistrationSnapshot {
         id: device.udid, device, name: device.name, coordinateProfile: 'iphone8',
         availableProfiles: [{ name: 'iphone8', displayName: 'iPhone 8', screenSize: { width: 375, height: 667 } }],
         recommendedProfile: 'iphone8', wdaLocalPort: 8100, mjpegLocalPort: 9100,
-        tiktokAccounts: [], hasPasscode: false, busy: false,
+        tiktokAccounts: [], instagramAccounts: [], hasPasscode: false, busy: false,
         checks: {
             host: passed, connection: passed, signing: passed, developer: passed, wda: passed,
-            appium: passed, video: passed, touch: passed, tiktok: passed, accounts: passed,
+            appium: passed, video: passed, touch: passed, tiktok: passed, instagram: passed, accounts: passed,
         },
         logs: [], canFinalize: true, finalized: false,
     };
