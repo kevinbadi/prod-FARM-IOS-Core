@@ -49,6 +49,7 @@ type ColdDmsPayload = JsonObject & {
     handles: string[];
     message: string;
     account?: string;
+    cycles?: number;
 };
 
 function objectPayload(value: JsonValue): Record<string, JsonValue> {
@@ -166,13 +167,21 @@ function createColdDmsTask(configuration: InstagramPluginConfiguration): TaskDef
             if (account && !/^@[A-Za-z0-9._]{1,64}$/.test(account)) {
                 throw new Error('Instagram handles may contain letters, numbers, periods, and underscores');
             }
+            let cycles: number | undefined;
+            if (input.cycles !== undefined) {
+                if (typeof input.cycles !== 'number' || !Number.isInteger(input.cycles) || input.cycles < 1 || input.cycles > 10) {
+                    throw new Error('cycles must be an integer between 1 and 10');
+                }
+                cycles = input.cycles;
+            }
             return {
                 handles,
                 message,
+                ...(cycles ? { cycles } : {}),
                 ...(account ? { account } : {}),
             };
         },
-        summarize: (payload) => `Cold DMs · ${payload.handles.length} handles (dry-run)`,
+        summarize: (payload) => `Cold DMs · ${payload.handles.length} handles`,
         estimateDurationMs: (payload) => Math.max(60_000, payload.handles.length * 45_000),
         retryPolicy: () => ({ retryLimit: 0, retryDelaySeconds: 0, retryBackoff: false }),
         supportsStop: () => true,
@@ -184,6 +193,7 @@ function createColdDmsTask(configuration: InstagramPluginConfiguration): TaskDef
                 INSTAGRAM_BUNDLE_ID: configuration.bundleId ?? 'com.burbn.instagram',
                 COLD_DMS_HANDLES: payload.handles.join('\n'),
                 COLD_DMS_MESSAGE: payload.message,
+                ...(typeof payload.cycles === 'number' ? { COLD_DMS_CYCLES: String(payload.cycles) } : {}),
                 ...(payload.account ? { INSTAGRAM_SWITCH_ACCOUNT: payload.account } : {}),
             },
         }),
@@ -400,6 +410,10 @@ export function createInstagramPlugin(configuration: InstagramPluginConfiguratio
                     try {
                         const handles = validateColdDmHandles(parseColdDmHandles(body.handles ?? ''));
                         const message = validateColdDmMessage(body.message ?? '');
+                        const cyclesRaw = body.cycles ? Number(body.cycles) : undefined;
+                        const cycles = cyclesRaw && Number.isInteger(cyclesRaw) && cyclesRaw >= 1 && cyclesRaw <= 10
+                            ? cyclesRaw
+                            : undefined;
                         const recent = await context.scheduler.listExecutions(50, device.udid);
                         const mine = recent.filter(({ pluginId, taskType }) => (
                             pluginId === 'com.git-agni.instagram' && taskType === 'cold-dms'
@@ -419,6 +433,7 @@ export function createInstagramPlugin(configuration: InstagramPluginConfiguratio
                                 payload: {
                                     handles,
                                     message,
+                                    ...(cycles ? { cycles } : {}),
                                     ...(body.account?.trim() ? { account: body.account.trim() } : {}),
                                 },
                             },

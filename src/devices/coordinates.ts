@@ -42,10 +42,18 @@ export interface SocialAppCoordinates {
     searchField: Point;
     /** First Accounts row after typing a handle. Unused on TikTok. */
     searchFirstResult: Point;
+    /** Blue arrow on New message To: field after typing a handle. Unused on TikTok. */
+    dmSearchSubmit: Point;
     /** Profile "Message" button. Unused on TikTok. */
     profileMessage: Point;
+    /** Instagram bottom-nav Messages / inbox tab. Unused on TikTok. */
+    dmCompose: Point;
+    /** Inbox header "compose new message" (pencil). Unused on TikTok. */
+    composeNewMessage: Point;
     /** DM thread composer field. Unused on TikTok. */
     dmComposer: Point;
+    /** Send control after typing in a DM thread. Unused on TikTok. */
+    dmSend: Point;
     /** Leave DM thread without sending. Unused on TikTok. */
     dmBack: Point;
     /** Open comments on the current video. */
@@ -116,8 +124,12 @@ const IPHONE8_TIKTOK: SocialAppCoordinates = {
     searchTab: { x: 112, y: 653 },
     searchField: { x: 187, y: 90 },
     searchFirstResult: { x: 100, y: 220 },
+    dmSearchSubmit: { x: 340, y: 90 },
     profileMessage: { x: 280, y: 420 },
+    dmCompose: { x: 187, y: 653 },
+    composeNewMessage: { x: 350, y: 55 },
     dmComposer: { x: 180, y: 620 },
+    dmSend: { x: 350, y: 620 },
     dmBack: { x: 22, y: 42 },
     comment: { x: 345, y: 378 },
     commentComposer: { x: 140, y: 620 },
@@ -164,8 +176,13 @@ const IPHONE8_INSTAGRAM: SocialAppCoordinates = {
     searchTab: { x: 112, y: 650 },
     searchField: { x: 187, y: 90 },
     searchFirstResult: { x: 100, y: 220 },
+    dmSearchSubmit: { x: 340, y: 90 },
     profileMessage: { x: 280, y: 420 },
+    // Messages / inbox tab (paper plane) — layout varies; recalibrate.
+    dmCompose: { x: 187, y: 650 },
+    composeNewMessage: { x: 350, y: 55 },
     dmComposer: { x: 180, y: 620 },
+    dmSend: { x: 350, y: 620 },
     dmBack: { x: 22, y: 42 },
     comment: { x: 345, y: 430 },
     commentComposer: { x: 140, y: 600 },
@@ -208,8 +225,12 @@ function scaleSocial(base: SocialAppCoordinates, sx: number, sy: number): Social
         searchTab: p(base.searchTab),
         searchField: p(base.searchField),
         searchFirstResult: p(base.searchFirstResult),
+        dmSearchSubmit: p(base.dmSearchSubmit),
         profileMessage: p(base.profileMessage),
+        dmCompose: p(base.dmCompose),
+        composeNewMessage: p(base.composeNewMessage),
         dmComposer: p(base.dmComposer),
+        dmSend: p(base.dmSend),
         dmBack: p(base.dmBack),
         comment: p(base.comment),
         commentComposer: p(base.commentComposer),
@@ -224,6 +245,8 @@ function scaleSocial(base: SocialAppCoordinates, sx: number, sy: number): Social
     };
 }
 
+const SX_13 = 390 / 375;
+const SY_13 = 844 / 667;
 const SX_17 = 402 / 375;
 const SY_17 = 874 / 667;
 
@@ -240,6 +263,38 @@ export const DEVICE_COORDINATES = {
         },
         tiktok: IPHONE8_TIKTOK,
         instagram: IPHONE8_INSTAGRAM,
+    },
+    // Seeded from iphone8 by scaling 375×667 → 390×844. Instagram chrome for
+    // cold DMs is further adjusted from the calibrated iphone17pro map
+    // (same floating-pill era UI). Recalibrate via the dashboard before
+    // relying on automation taps in production.
+    iphone13: {
+        displayName: 'iPhone 13/14',
+        productTypes: ['iPhone14,5', 'iPhone14,7'],
+        screenSize: { width: 390, height: 844 },
+        passcodeKeypad: {
+            columnX: [107, 199, 286],
+            rowY: [278, 439, 538, 640],
+        },
+        tiktok: scaleSocial(IPHONE8_TIKTOK, SX_13, SY_13),
+        instagram: {
+            ...scaleSocial(IPHONE8_INSTAGRAM, SX_13, SY_13),
+            // Floating-pill row (~797) — scaled from calibrated 17 Pro (~825).
+            homeTab: { x: 39, y: 797 },
+            profileTab: { x: 350, y: 823 },
+            reelsTab: { x: 129, y: 797 },
+            searchTab: { x: 116, y: 797 },
+            create: { x: 200, y: 797 },
+            followingTab: { x: 70, y: 93 },
+            dmCompose: { x: 195, y: 797 },
+            composeNewMessage: { x: 367, y: 75 },
+            searchField: { x: 194, y: 97 },
+            searchFirstResult: { x: 195, y: 222 },
+            dmSearchSubmit: { x: 359, y: 97 },
+            dmComposer: { x: 155, y: 502 },
+            dmSend: { x: 349, y: 502 },
+            dmBack: { x: 23, y: 53 },
+        },
     },
     // Seeded from iphone8 by scaling 375×667 → 402×874. Recalibrate via the
     // dashboard before relying on automation taps in production.
@@ -279,12 +334,22 @@ export const DEVICE_COORDINATES = {
             save: { x: 372, y: 640 },
             commentComposer: { x: 150, y: 786 },
             commentSend: { x: 364, y: 786 },
-            // Cold DMs search → profile → Message → composer (recalibrate).
+            // Cold DMs: inbox → compose → To: search (recalibrate).
             searchTab: { x: 120, y: 852 },
             searchField: { x: 200, y: 100 },
-            searchFirstResult: { x: 100, y: 280 },
+            // Full-width recipient row under To: — tap center of the row, not the avatar edge.
+            searchFirstResult: { x: 201, y: 230 },
+            // Blue paper-plane / arrow on the right of the To: search field.
+            dmSearchSubmit: { x: 370, y: 100 },
             profileMessage: { x: 300, y: 520 },
-            dmComposer: { x: 180, y: 800 },
+            // Bottom-nav Messages paper plane — same floating-pill row as Reels (~825).
+            dmCompose: { x: 201, y: 825 },
+            // Inbox header pencil (top-right) — only valid AFTER inbox is open.
+            composeNewMessage: { x: 378, y: 78 },
+            // DM "Message..." field above the keyboard (keyboard open).
+            dmComposer: { x: 160, y: 520 },
+            // "Send" that replaces mic after text is entered.
+            dmSend: { x: 360, y: 520 },
             dmBack: { x: 24, y: 55 },
             swipe: { x: 130, startY: 721, endY: 197, durationMs: 380 },
         },
@@ -334,8 +399,8 @@ export function coordinatesForProfile(profile: string = DEFAULT_COORDINATE_PROFI
 export const CALIBRATABLE_POINTS = [
     'profileTab', 'homeTab', 'accountSwitcher', 'create', 'postContent', 'upload', 'selectMultiple', 'useLayout',
     'pickerNext', 'editorNext', 'caption', 'keyboardBack', 'draft', 'finish', 'like', 'save',
-    'followingTab', 'reelsTab', 'searchTab', 'searchField', 'searchFirstResult', 'profileMessage',
-    'dmComposer', 'dmBack', 'comment', 'commentComposer', 'commentSend',
+    'followingTab', 'reelsTab', 'searchTab', 'searchField', 'searchFirstResult', 'dmSearchSubmit', 'profileMessage',
+    'dmCompose', 'composeNewMessage', 'dmComposer', 'dmSend', 'dmBack', 'comment', 'commentComposer', 'commentSend',
 ] as const;
 
 export type CalibratablePoint = typeof CALIBRATABLE_POINTS[number];
@@ -348,8 +413,10 @@ export const TIKTOK_POINT_LABELS: Record<CalibratablePoint, string> = {
     like: 'TikTok: Like button', save: 'TikTok: Save/bookmark button',
     followingTab: 'TikTok: Following tab', reelsTab: 'TikTok: Reels tab',
     searchTab: 'TikTok: Search tab (unused)', searchField: 'TikTok: Search field (unused)',
-    searchFirstResult: 'TikTok: Search result (unused)', profileMessage: 'TikTok: Message (unused)',
-    dmComposer: 'TikTok: DM composer (unused)', dmBack: 'TikTok: DM back (unused)',
+    searchFirstResult: 'TikTok: Search result (unused)', dmSearchSubmit: 'TikTok: DM search submit (unused)',
+    profileMessage: 'TikTok: Message (unused)',
+    dmCompose: 'TikTok: DM Compose (unused)', composeNewMessage: 'TikTok: Compose new message (unused)',
+    dmComposer: 'TikTok: DM composer (unused)', dmSend: 'TikTok: DM send (unused)', dmBack: 'TikTok: DM back (unused)',
     comment: 'TikTok: Comment button',
     commentComposer: 'TikTok: Comment text field', commentSend: 'TikTok: Comment send',
 };
@@ -363,8 +430,11 @@ export const INSTAGRAM_POINT_LABELS: Record<CalibratablePoint, string> = {
     like: 'Instagram: Like button', save: 'Instagram: Save/bookmark button',
     followingTab: 'Instagram: Following tab', reelsTab: 'Instagram: Reels tab',
     searchTab: 'Instagram: Search tab', searchField: 'Instagram: Search field',
-    searchFirstResult: 'Instagram: Search · first account', profileMessage: 'Instagram: Profile · Message',
-    dmComposer: 'Instagram: DM composer', dmBack: 'Instagram: DM · Back',
+    searchFirstResult: 'Instagram: New message · top result',
+    dmSearchSubmit: 'Instagram: New message · blue arrow',
+    profileMessage: 'Instagram: Profile · Message',
+    dmCompose: 'Instagram: DM Compose', composeNewMessage: 'Instagram: Compose new message',
+    dmComposer: 'Instagram: DM · Message field', dmSend: 'Instagram: DM · Send', dmBack: 'Instagram: DM · Back',
     comment: 'Instagram: Comment button',
     commentComposer: 'Instagram: Comment text field', commentSend: 'Instagram: Comment send',
 };

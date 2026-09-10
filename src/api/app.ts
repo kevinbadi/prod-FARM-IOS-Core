@@ -44,6 +44,7 @@ interface LoadedDashboardTheme {
     indexHtml: string;
     deviceHtml: string;
     tasksHtml: string;
+    devicesDemoHtml: string;
     styles: string;
     deviceScript: string;
     tasksScript: string;
@@ -205,11 +206,12 @@ export async function createApp(options: CreateAppOptions): Promise<FastifyInsta
     if (options.dashboardTheme) {
         const root = options.dashboardTheme.rootDirectory;
         const require = createRequire(import.meta.url);
-        const [indexHtml, deviceHtml, tasksHtml, registerDeviceHtml, styles, deviceScript, tasksScript, registerDeviceScript, htmx] = await Promise.all([
+        const [indexHtml, deviceHtml, tasksHtml, registerDeviceHtml, devicesDemoHtml, styles, deviceScript, tasksScript, registerDeviceScript, htmx] = await Promise.all([
             readFile(path.join(root, 'templates/index.html'), 'utf8'),
             readFile(path.join(root, 'templates/device.html'), 'utf8'),
             readFile(path.join(root, 'templates/tasks.html'), 'utf8'),
             readFile(path.join(root, 'templates/register-device.html'), 'utf8'),
+            readFile(path.join(root, 'templates/devices-demo.html'), 'utf8'),
             readFile(path.join(root, 'styles.css'), 'utf8'),
             readFile(path.join(root, 'assets/device.js'), 'utf8'),
             readFile(path.join(root, 'assets/tasks.js'), 'utf8'),
@@ -232,6 +234,7 @@ export async function createApp(options: CreateAppOptions): Promise<FastifyInsta
         themed = {
             indexHtml: finalize(indexHtml), deviceHtml: finalize(deviceHtml),
             tasksHtml: finalize(tasksHtml), registerDeviceHtml: finalize(registerDeviceHtml),
+            devicesDemoHtml: finalize(devicesDemoHtml),
             styles, deviceScript, tasksScript, registerDeviceScript, htmx,
         };
     }
@@ -693,6 +696,10 @@ export async function createApp(options: CreateAppOptions): Promise<FastifyInsta
         const candidates = connected.filter(({ udid }) => !registeredIds.has(udid)).map((device) => `<option value="${escapeHtml(device.udid)}" data-name="${escapeHtml(device.name)}">${escapeHtml(device.name)} · ${escapeHtml(device.osVersion)}</option>`).join('');
         const registration = candidates ? `<section class="card"><h2>Register connected device</h2><form id="register-device"><select name="udid">${candidates}</select> <button>Register</button></form><p id="register-result" class="muted"></p><script>document.getElementById('register-device').addEventListener('submit',async function(e){e.preventDefault();var s=e.currentTarget.udid;var o=s.options[s.selectedIndex];var r=await fetch('/api/devices',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({udid:o.value,name:o.dataset.name,pluginData:{}})});document.getElementById('register-result').textContent=r.ok?'Registered. Reloading…':(await r.json()).error;if(r.ok)setTimeout(function(){location.reload()},500)});</script></section>` : '';
         return reply.type('text/html').send(renderPage('Devices', `<h1>Devices</h1>${registration}<div class="grid">${cards || '<p>No devices registered.</p>'}</div>`));
+    });
+    app.get('/demo/devices', async (_request, reply) => {
+        if (!themed) return reply.type('text/html').send(renderPage('Fleet demo', '<h1>Fleet demo</h1><p>Enable the dashboard theme to preview the 20-seat layout.</p>'));
+        return reply.type('text/html').send(themed.devicesDemoHtml);
     });
     app.get('/devices/register', async (_request, reply) => {
         if (!themed) return reply.type('text/html').send(renderPage('Register device', '<h1>Register device</h1><p>Use <code>POST /api/device-registrations</code> to start device setup.</p>'));

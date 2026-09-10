@@ -526,21 +526,23 @@
                 <div><span class="eyebrow">Instagram</span><h2>Cold DMs</h2></div>
                 <button id="close-instagram-cold-dms" class="icon-button" type="button">Close</button>
             </div>
-            <p>Opens Search → profile → Message → types your preset. <strong>Does not tap Send</strong> — dry-run for calibration.</p>
+            <p>Opens Instagram → DM inbox → Compose → recipient → types preset → <strong>Send</strong> → Home → next.</p>
             <label for="instagram-cold-dms-handles">Handles <small>(one per line or comma-separated, max 25)</small></label>
             <textarea id="instagram-cold-dms-handles" name="handles" rows="6" required placeholder="@creator1&#10;@creator2"></textarea>
             <label for="instagram-cold-dms-message">Message preset</label>
             <textarea id="instagram-cold-dms-message" name="message" rows="4" maxlength="1000" required placeholder="Hey — love your content…"></textarea>
+            <label for="instagram-cold-dms-cycles">Cycles per handle</label>
+            <input id="instagram-cold-dms-cycles" name="cycles" type="number" min="1" max="10" value="1">
             <label for="instagram-cold-dms-account">Instagram account</label>
             <select id="instagram-cold-dms-account" name="account">
                 <option value="">Don't switch</option>__INSTAGRAM_ACCOUNT_OPTIONS__
             </select>
-            <p class="hint">Calibrate Search tab, search field, first result, Profile Message, DM composer, and DM Back under Instagram coordinates first.</p>
+            <p class="hint">Calibrate <strong>DM Compose</strong>, <strong>Compose new message</strong>, top result, Message field, and <strong>DM · Send</strong>.</p>
             <div class="form-actions">
                 <span id="instagram-cold-dms-result" class="run-meta" aria-live="polite"></span>
                 <span class="spacer"></span>
                 <button id="cancel-instagram-cold-dms" class="button secondary" type="button">Cancel</button>
-                <button class="button primary" type="submit">Start dry-run</button>
+                <button class="button primary" type="submit">Start cold DMs</button>
             </div>
         </form>
     </dialog>

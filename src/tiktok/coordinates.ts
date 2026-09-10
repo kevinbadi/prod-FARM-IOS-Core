@@ -29,6 +29,23 @@ export const DEVICE_COORDINATES = {
             swipe: { x: 187, startY: 550, endY: 150, durationMs: 450 },
         },
     },
+    // Keep in sync with src/devices/coordinates.ts (scaled seed for 390×844).
+    iphone13: {
+        passcodeKeypad: { columnX: [107, 199, 286], rowY: [278, 439, 538, 640] },
+        tiktok: {
+            profileTab: { x: 352, y: 830 }, homeTab: { x: 40, y: 826 }, accountSwitcher: { x: 192, y: 200 },
+            create: { x: 194, y: 810 }, postContent: { x: 194, y: 810 }, upload: { x: 31, y: 804 }, selectMultiple: { x: 25, y: 782 },
+            useLayout: { x: 25, y: 619 },
+            picker: { circleX: 110, columnStep: 131, firstY: 610, trayY: 456, rowStep: 158, cellX: 64, cellStep: 130, cellY: 666 },
+            pickerNext: { x: 288, y: 781 }, editorNext: { x: 288, y: 806 }, caption: { x: 125, y: 299 },
+            keyboardBack: { x: 23, y: 53 }, draft: { x: 102, y: 797 }, finish: { x: 288, y: 797 },
+            like: { x: 359, y: 396 }, save: { x: 359, y: 562 },
+            followingTab: { x: 99, y: 99 }, comment: { x: 359, y: 478 },
+            commentComposer: { x: 146, y: 785 }, commentSend: { x: 354, y: 785 },
+            liveClose: { x: 365, y: 89 },
+            swipe: { x: 194, startY: 696, endY: 190, durationMs: 450 },
+        },
+    },
     // Keep in sync with src/devices/coordinates.ts (scaled seed for 402×874).
     iphone17pro: {
         passcodeKeypad: { columnX: [110, 205, 295], rowY: [288, 455, 557, 663] },

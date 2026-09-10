@@ -1,0 +1,163 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Fleet demo · IOS AGENTS</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Syne:wght@600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/assets/styles.css">
+</head>
+<body>
+    <header class="topbar">
+        <div class="topbar-inner">
+            <a class="brand" href="/">
+                <span class="brand-mark" aria-hidden="true"></span>
+                <span class="brand-text">
+                    <span class="brand-name">IOS AGENTS</span>
+                    <span class="brand-by">by kevbuilds apps</span>
+                </span>
+            </a>
+            <nav class="topbar-nav">
+                <a class="button secondary" href="/">Live devices</a>
+                <a class="button primary" href="/devices/register">Register device</a>
+                <a class="button secondary" href="/tasks">Tasks</a>
+                __PLUGIN_NAV____AUTH_NAV__
+            </nav>
+        </div>
+    </header>
+    <main class="shell shell-fleet">
+        <div class="demo-banner" role="note">
+            <strong>Demo</strong> — mock fleet of 20 seats. Nothing here talks to real phones.
+            <a href="/">Back to live devices</a>
+        </div>
+
+        <header class="page-header fleet-header">
+            <div>
+                <span class="eyebrow">Fleet control</span>
+                <h1>Your <em>devices</em></h1>
+                <p>Twenty seats on one Mac — pick a phone to drive live or queue warmup, engagement, and posts.</p>
+            </div>
+            <div class="fleet-stats" aria-label="Fleet summary">
+                <div class="fleet-stat"><span class="fleet-stat-value">20</span><span class="fleet-stat-label">Seats</span></div>
+                <div class="fleet-stat"><span class="fleet-stat-value">17</span><span class="fleet-stat-label">Online</span></div>
+                <div class="fleet-stat running"><span class="fleet-stat-value">3</span><span class="fleet-stat-label">Running</span></div>
+                <div class="fleet-stat offline"><span class="fleet-stat-value">3</span><span class="fleet-stat-label">Offline</span></div>
+            </div>
+        </header>
+
+        <div class="fleet-toolbar">
+            <div class="fleet-filters" role="group" aria-label="Filter devices">
+                <button type="button" class="fleet-filter is-active" data-filter="all">All 20</button>
+                <button type="button" class="fleet-filter" data-filter="online">Online</button>
+                <button type="button" class="fleet-filter" data-filter="running">Running</button>
+                <button type="button" class="fleet-filter" data-filter="offline">Offline</button>
+            </div>
+            <p class="fleet-toolbar-meta" id="fleet-visible-count">Showing 20 seats</p>
+        </div>
+
+        <section class="fleet-grid" id="fleet-grid" aria-live="polite"></section>
+    </main>
+    <footer class="app-footer">__FOOTER__</footer>
+    <script>
+        (function () {
+            var seats = [
+                { name: 'Seat 01', model: 'iPhone 17 Pro · iOS 26.6', status: 'online', screen: 'home', chip: 'Idle' },
+                { name: 'Seat 02', model: 'iPhone 17 Pro · iOS 26.6', status: 'running', screen: 'tiktok', chip: 'Warmup · 4:12', running: true },
+                { name: 'Seat 03', model: 'iPhone SE · iOS 18.5', status: 'online', screen: 'home', chip: 'Idle' },
+                { name: 'Seat 04', model: 'iPhone 13 · iOS 26.5', status: 'online', screen: 'lock', chip: 'Idle' },
+                { name: 'Seat 05', model: 'iPhone 17 Pro · iOS 26.6', status: 'online', screen: 'tiktok', chip: 'Queued' },
+                { name: 'Seat 06', model: 'iPhone 17 Pro · iOS 26.6', status: 'running', screen: 'tiktok', chip: 'Engagement · 11:40', running: true },
+                { name: 'Seat 07', model: 'iPhone SE · iOS 18.5', status: 'online', screen: 'home', chip: 'Idle' },
+                { name: 'Seat 08', model: 'iPhone 13 · iOS 26.5', status: 'online', screen: 'instagram', chip: 'Idle' },
+                { name: 'Seat 09', model: 'iPhone 17 Pro · iOS 26.6', status: 'online', screen: 'home', chip: 'Idle' },
+                { name: 'Seat 10', model: 'iPhone 17 Pro · iOS 26.6', status: 'running', screen: 'instagram', chip: 'IG Warmup · 2:08', running: true },
+                { name: 'Seat 11', model: 'iPhone SE · iOS 18.5', status: 'online', screen: 'lock', chip: 'Idle' },
+                { name: 'Seat 12', model: 'iPhone 13 · iOS 26.5', status: 'online', screen: 'home', chip: 'Idle' },
+                { name: 'Seat 13', model: 'iPhone 17 Pro · iOS 26.6', status: 'online', screen: 'tiktok', chip: 'Idle' },
+                { name: 'Seat 14', model: 'iPhone 17 Pro · iOS 26.6', status: 'online', screen: 'home', chip: 'Idle' },
+                { name: 'Seat 15', model: 'iPhone SE · iOS 18.5', status: 'online', screen: 'instagram', chip: 'Idle' },
+                { name: 'Seat 16', model: 'iPhone 13 · iOS 26.5', status: 'online', screen: 'home', chip: 'Idle' },
+                { name: 'Seat 17', model: 'iPhone 17 Pro · iOS 26.6', status: 'online', screen: 'tiktok', chip: 'Idle' },
+                { name: 'Seat 18', model: 'iPhone 17 Pro · unplugged', status: 'offline', screen: 'offline', chip: null },
+                { name: 'Seat 19', model: 'iPhone SE · cable fault', status: 'offline', screen: 'offline', chip: null },
+                { name: 'Seat 20', model: 'iPhone 13 · trust needed', status: 'offline', screen: 'offline', chip: null },
+            ];
+
+            function screenHtml(kind, hue) {
+                if (kind === 'offline') {
+                    return '<div class="mock-screen mock-offline"><div class="mock-status"></div><div class="mock-offline-mark"></div><span class="mock-offline-label">No signal</span></div>';
+                }
+                if (kind === 'lock') {
+                    return '<div class="mock-screen mock-lock" style="--hue:' + hue + '"><div class="mock-status light"></div><div class="mock-lock-time">9:41</div><div class="mock-lock-date">Thu Sep 10</div><div class="mock-lock-flash"></div></div>';
+                }
+                if (kind === 'home') {
+                    return '<div class="mock-screen mock-home" style="--hue:' + hue + '"><div class="mock-status light"></div><div class="mock-icons">'
+                        + '<span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span>'
+                        + '</div><div class="mock-dock"><span></span><span></span><span></span><span></span></div></div>';
+                }
+                if (kind === 'instagram') {
+                    return '<div class="mock-screen mock-ig" style="--hue:' + hue + '"><div class="mock-status"></div>'
+                        + '<div class="mock-ig-tabs"><span></span><span class="on"></span></div>'
+                        + '<div class="mock-feed-caption"><b>@studio</b> new drop</div>'
+                        + '<div class="mock-rail"><i></i><i></i><i></i></div>'
+                        + '<div class="mock-tabbar ig"><span></span><span></span><span></span><span class="on"></span><span></span></div></div>';
+                }
+                return '<div class="mock-screen mock-tiktok" style="--hue:' + hue + '"><div class="mock-status"></div>'
+                    + '<div class="mock-tt-tabs"><span>Following</span><span class="on">For You</span></div>'
+                    + '<div class="mock-feed-caption"><b>@creator</b> outlier hook</div>'
+                    + '<div class="mock-rail"><i></i><i></i><i></i><i></i></div>'
+                    + '<div class="mock-tabbar tt"><span class="on"></span><span></span><span class="plus"></span><span></span><span></span></div></div>';
+            }
+
+            function phoneHtml(seat, index) {
+                var hue = 200 + index * 17;
+                return '<div class="fleet-phone" aria-hidden="true">'
+                    + '<div class="fleet-bezel">'
+                    + '<span class="fleet-dynamic-island"></span>'
+                    + screenHtml(seat.screen, hue)
+                    + '</div></div>';
+            }
+
+            var grid = document.getElementById('fleet-grid');
+            grid.innerHTML = seats.map(function (seat, index) {
+                var chips = seat.status === 'offline'
+                    ? '<span class="connection-chip unavailable">Offline</span>'
+                    : '<span class="connection-chip ready">Online</span><span class="connection-chip'
+                        + (seat.running ? ' running' : '') + '">' + seat.chip + '</span>';
+                return '<article class="fleet-tile" data-status="' + seat.status + '">'
+                    + phoneHtml(seat, index)
+                    + '<div class="fleet-copy"><h2>' + seat.name + '</h2><p>' + seat.model + '</p>'
+                    + '<div class="fleet-chips">' + chips + '</div></div>'
+                    + '<a class="button secondary fleet-open" href="#">Open →</a></article>';
+            }).join('');
+
+            var filters = document.querySelectorAll('.fleet-filter');
+            var tiles = Array.prototype.slice.call(document.querySelectorAll('.fleet-tile'));
+            var count = document.getElementById('fleet-visible-count');
+            function apply(filter) {
+                var visible = 0;
+                tiles.forEach(function (tile) {
+                    var status = tile.getAttribute('data-status');
+                    var show = filter === 'all'
+                        || (filter === 'online' && (status === 'online' || status === 'running'))
+                        || status === filter;
+                    tile.hidden = !show;
+                    if (show) visible += 1;
+                });
+                count.textContent = 'Showing ' + visible + ' seat' + (visible === 1 ? '' : 's');
+            }
+            filters.forEach(function (button) {
+                button.addEventListener('click', function () {
+                    filters.forEach(function (entry) { entry.classList.toggle('is-active', entry === button); });
+                    apply(button.getAttribute('data-filter'));
+                });
+            });
+            document.querySelectorAll('.fleet-open').forEach(function (link) {
+                link.addEventListener('click', function (event) { event.preventDefault(); });
+            });
+        })();
+    </script>
+</body>
+</html>

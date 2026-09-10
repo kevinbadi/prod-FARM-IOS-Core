@@ -4,7 +4,7 @@
 coordinate profile is a compiled constant in the source. `devices.json` only
 *selects* one that already exists. Adding a new layout means editing two files
 and redeploying. Profiles ship with both `tiktok` and `instagram` tap maps
-(`iphone8` and `iphone17pro` today).
+(`iphone8`, `iphone13`, and `iphone17pro` today).
 
 ## What a profile is
 

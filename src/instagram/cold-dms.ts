@@ -114,39 +114,88 @@ async function clearFocusedField(browser: Browser): Promise<void> {
     }
 }
 
-async function openSearch(browser: Browser): Promise<void> {
-    await tapCoordinate(browser, ig.searchTab.x, ig.searchTab.y, 'Search tab');
-    await browser.pause(1500);
-    await tapCoordinate(browser, ig.searchField.x, ig.searchField.y, 'Search field');
+/** Open inbox via Home bottom-nav paper plane, then inbox header pencil. */
+async function openNewMessageComposer(browser: Browser): Promise<void> {
+    console.log(
+        `Opening DM inbox (paper plane) at (${ig.dmCompose.x}, ${ig.dmCompose.y})`,
+    );
+    await tapCoordinate(browser, ig.dmCompose.x, ig.dmCompose.y, 'DM Compose');
+    // Wait for inbox chrome before the top-right pencil — on Home that same
+    // corner is the heart (notifications), which is what a premature tap hits.
+    await browser.pause(3500);
+    console.log(
+        `Opening compose new message at (${ig.composeNewMessage.x}, ${ig.composeNewMessage.y})`,
+    );
+    await tapCoordinate(
+        browser,
+        ig.composeNewMessage.x,
+        ig.composeNewMessage.y,
+        'Compose new message',
+    );
+    await browser.pause(2000);
+}
+
+async function returnToHome(browser: Browser): Promise<void> {
+    console.log('Returning to Home after send');
+    // Leave the open thread (top-left chevron).
+    await tapCoordinate(browser, ig.dmBack.x, ig.dmBack.y, 'DM back (leave thread)');
+    await browser.pause(1600);
+    // Floating Home icon is on the same pill row as Messages (dmCompose.y ≈ 825),
+    // not the older homeTab seed at y=852 which misses the bar.
+    const homeX = ig.homeTab.x;
+    const homeY = ig.dmCompose.y;
+    console.log(`Tapping Home tab at (${homeX}, ${homeY})`);
+    await tapCoordinate(browser, homeX, homeY, 'Home tab');
+    await browser.pause(2000);
+}
+
+async function sendMessageToHandle(browser: Browser, handle: string): Promise<void> {
+    const query = handle.replace(/^@/, '');
+    console.log(`Cold DM send for ${handle}`);
+    await openNewMessageComposer(browser);
+    // "New message" To: field — reuse searchField calibration on that screen.
+    await tapCoordinate(browser, ig.searchField.x, ig.searchField.y, 'New message To: field');
     await browser.pause(800);
     await clearFocusedField(browser);
-}
-
-async function leaveThreadToSearch(browser: Browser): Promise<void> {
-    await tapCoordinate(browser, ig.dmBack.x, ig.dmBack.y, 'DM back');
-    await browser.pause(900);
-    await tapCoordinate(browser, ig.dmBack.x, ig.dmBack.y, 'DM back (profile)');
-    await browser.pause(900);
-    await tapCoordinate(browser, ig.searchTab.x, ig.searchTab.y, 'Search tab (reset)');
-    await browser.pause(1200);
-}
-
-async function prepareComposerForHandle(browser: Browser, handle: string): Promise<void> {
-    const query = handle.replace(/^@/, '');
-    console.log(`Cold DM dry-run for ${handle}`);
-    await openSearch(browser);
     await typeText(browser, query);
-    await browser.pause(2000);
-    await tapCoordinate(browser, ig.searchFirstResult.x, ig.searchFirstResult.y, 'Search first result');
+    // Instagram needs a recipient chosen from the list before the thread opens.
+    await browser.pause(3000);
+    console.log(
+        `Selecting top search result at (${ig.searchFirstResult.x}, ${ig.searchFirstResult.y})`,
+    );
+    await tapCoordinate(
+        browser,
+        ig.searchFirstResult.x,
+        ig.searchFirstResult.y,
+        'Top search result',
+    );
+    await browser.pause(1500);
+    console.log(
+        `Confirming with blue arrow at (${ig.dmSearchSubmit.x}, ${ig.dmSearchSubmit.y})`,
+    );
+    await tapCoordinate(
+        browser,
+        ig.dmSearchSubmit.x,
+        ig.dmSearchSubmit.y,
+        'New message blue arrow',
+    );
     await browser.pause(2500);
-    await tapCoordinate(browser, ig.profileMessage.x, ig.profileMessage.y, 'Profile Message');
-    await browser.pause(2500);
-    await tapCoordinate(browser, ig.dmComposer.x, ig.dmComposer.y, 'DM composer');
-    await browser.pause(800);
+    console.log(
+        `Focusing Message field at (${ig.dmComposer.x}, ${ig.dmComposer.y})`,
+    );
+    await tapCoordinate(browser, ig.dmComposer.x, ig.dmComposer.y, 'Message field');
+    await browser.pause(1000);
     await clearFocusedField(browser);
     await typeText(browser, message);
-    console.log(`Composer ready for ${handle} (not sending)`);
+    await browser.pause(800);
+    console.log(`Sending DM at (${ig.dmSend.x}, ${ig.dmSend.y})`);
+    await tapCoordinate(browser, ig.dmSend.x, ig.dmSend.y, 'DM Send');
+    await browser.pause(2000);
+    console.log(`Sent DM to ${handle}`);
 }
+
+const cycles = positiveInteger('COLD_DMS_CYCLES', 1);
+const sequence = handles.flatMap((handle) => Array.from({ length: cycles }, () => handle));
 
 const remoteControl = new WdaRemoteControl({
     deviceUdid: udid,
@@ -154,14 +203,14 @@ const remoteControl = new WdaRemoteControl({
 });
 
 console.log(
-    `Starting Instagram cold DMs dry-run: handles=${handles.length} messageChars=${message.length}`
-    + ` (will not tap Send)`,
+    `Starting Instagram cold DMs: handles=${handles.length} cycles=${cycles} `
+    + `sends=${sequence.length} messageChars=${message.length}`,
 );
 
 await remoteControl.unlock(udid);
 
 let driver: Browser | undefined;
-let prepared = 0;
+let sent = 0;
 let failed = 0;
 
 try {
@@ -189,28 +238,32 @@ try {
         }
     }
 
-    for (const [index, handle] of handles.entries()) {
+    // Land on Home so the first paper-plane tap is reliable.
+    await tapCoordinate(driver, ig.homeTab.x, ig.homeTab.y, 'Home tab');
+    await driver.pause(1500);
+
+    for (const [index, handle] of sequence.entries()) {
         if (stopRequested) {
-            console.log('Stop requested — ending cold DM dry-run');
+            console.log('Stop requested — ending cold DMs');
             break;
         }
         try {
-            await prepareComposerForHandle(driver, handle);
-            prepared += 1;
+            await sendMessageToHandle(driver, handle);
+            sent += 1;
         } catch (error) {
             failed += 1;
             console.error(
                 `Skipped ${handle}: ${error instanceof Error ? error.message : String(error)}`,
             );
             try {
-                await leaveThreadToSearch(driver);
+                await returnToHome(driver);
             } catch {
-                // Best-effort recovery before the next handle.
+                // Best-effort recovery before the next send.
             }
             continue;
         }
-        if (index < handles.length - 1 && !stopRequested) {
-            await leaveThreadToSearch(driver);
+        if (index < sequence.length - 1 && !stopRequested) {
+            await returnToHome(driver);
             await cancellableDelay(betweenHandleMs);
         }
     }
@@ -218,7 +271,7 @@ try {
     if (driver) await driver.deleteSession().catch(() => {});
 }
 
-console.log(`Cold DM dry-run finished: prepared=${prepared} failed=${failed} total=${handles.length}`);
-if (prepared === 0) {
-    throw new Error('Cold DM dry-run prepared zero composers — check Search / Message / DM calibrations');
+console.log(`Cold DMs finished: sent=${sent} failed=${failed} total=${sequence.length}`);
+if (sent === 0) {
+    throw new Error('Cold DMs sent zero messages — check DM Compose / recipient / Send calibrations');
 }
